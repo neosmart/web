@@ -21,7 +21,8 @@ namespace NeoSmart.Web
                 // Could use TryParse instead, but I wanted to catch all exceptions
                 IPAddress.Parse(userHostAddress);
 
-                var xForwardedFor = request.ServerVariables["HTTP_X_FORWARDED_FOR"];
+                var xForwardedFor = request.ServerVariables.AllKeys.Contains("HTTP_X_FORWARDED_FOR") ? request.ServerVariables["HTTP_X_FORWARDED_FOR"] :
+                    request.ServerVariables.AllKeys.Contains("X_FORWARDED_FOR") ? request.ServerVariables["X_FORWARDED_FOR"] : "";
 
                 if (string.IsNullOrWhiteSpace(xForwardedFor))
                 {
