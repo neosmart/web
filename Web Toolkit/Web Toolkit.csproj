@@ -50,11 +50,13 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Bitly.cs" />
+    <Compile Include="FraudControl.cs" />
     <Compile Include="Normalization.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="S3.cs" />
     <Compile Include="ScopedMutex.cs" />
     <Compile Include="Seo.cs" />
+    <Compile Include="Utils.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
