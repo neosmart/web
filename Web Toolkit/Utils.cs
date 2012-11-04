@@ -70,5 +70,38 @@ namespace NeoSmart.Web
             var isLinkLocalAddress = octets[0] == 169 && octets[1] == 254;
             return isLinkLocalAddress;
         }
+
+        public static string EncodeStringDictionary(Dictionary<string, string> dictionary)
+        {
+            var sb = new StringBuilder();
+
+            foreach (var kv in dictionary)
+            {
+                sb.AppendFormat("{0}={1}&", Uri.EscapeUriString(kv.Key), Uri.EscapeUriString(kv.Value));
+            }
+
+            //Trim trailing &
+            if (sb.Length > 0)
+            {
+                sb.Remove(sb.Length - 1, 1);
+            }
+
+            return sb.ToString();
+        }
+
+        public static string ByteToHex(byte[] bytes)
+        {
+            var c = new char[bytes.Length << 1];
+
+            for (int i = 0; i < bytes.Length; i++)
+            {
+                byte b = ((byte)(bytes[i] >> 4));
+                c[i * 2] = (char)(b > 9 ? b + 0x37 : b + 0x30);
+                b = ((byte)(bytes[i] & 0xF));
+                c[i * 2 + 1] = (char)(b > 9 ? b + 0x37 : b + 0x30);
+            }
+
+            return new string(c);
+        }
     }
 }
