@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Web;
 using System.Web.Mvc;
 
@@ -10,28 +12,20 @@ namespace NeoSmart.Web
 {
     public class Seo
     {
-        private static readonly Dictionary<string, string> MethodCache = new Dictionary<string, string>();
-
+        private static readonly Dictionary<string, MethodBase> MethodCache = new Dictionary<string, MethodBase>();
         public static RedirectResult CaseSensitiveRedirect(Controller controller, [CallerFilePath] string filePath = "", [CallerLineNumber] int lineNumber = 0)
         {
             string key = string.Format("{0}:{1}", filePath, lineNumber);
-            string correctPath;
-            if (!MethodCache.TryGetValue(key, out correctPath))
+            MethodBase lastMethod;
+            if (!MethodCache.TryGetValue(key, out lastMethod))
             {
-                var lastMethod = new StackFrame(1).GetMethod();
-                CaseSensitiveRedirect(controller, lastMethod, out correctPath);
-                MethodCache.Add(key, correctPath);
+                lastMethod = new StackFrame(1).GetMethod();
+                MethodCache.Add(key, lastMethod);
             }
-
-            if (HttpContext.Current.Request.Url.AbsolutePath != correctPath)
-            {
-                return new RedirectResult(correctPath, true);
-            }
-
-            return null;
+            return CaseSensitiveRedirect(controller, lastMethod);
         }
 
-        public static bool CaseSensitiveRedirect(Controller controller, MethodBase method, out string redirectPath)
+        private static RedirectResult CaseSensitiveRedirect(Controller controller, MethodBase method)
         {
             string currentAction = (string)controller.RouteData.Values["action"];
             string currentController = (string)controller.RouteData.Values["controller"];
@@ -42,28 +36,26 @@ namespace NeoSmart.Web
             //Case Redirect
             if (currentAction != realAction || currentController != realController)
             {
-                redirectPath = HttpContext.Current.Request.Url.AbsolutePath.Replace(currentAction, realAction).Replace(currentController, realController);
-                return true;
+                return new RedirectResult(HttpContext.Current.Request.Url.AbsolutePath.Replace(currentAction, realAction).Replace(currentController, realController), true);
             }
 
             //Trailing-backslash configuration
             bool isIndex = realAction == "Index";
             if ((isIndex && !HttpContext.Current.Request.Url.AbsolutePath.EndsWith("/")) || (!isIndex && HttpContext.Current.Request.Url.AbsolutePath.EndsWith("/")))
             {
-                redirectPath = string.Format("{0}{1}", HttpContext.Current.Request.Url.AbsolutePath.TrimEnd(new[] { '/' }), isIndex ? "/" : "");
-                return true;
+                var redirect = string.Format("{0}{1}", HttpContext.Current.Request.Url.AbsolutePath.TrimEnd(new[] { '/' }), isIndex ? "/" : "");
+                return new RedirectResult(redirect, true);
             }
 
             //No Index in link
             if (isIndex && HttpContext.Current.Request.Url.AbsolutePath.EndsWith("/Index/"))
             {
                 const string search = "Index/";
-                redirectPath = HttpContext.Current.Request.Url.AbsolutePath.Substring(0, HttpContext.Current.Request.Url.AbsolutePath.Length - search.Length);
-                return true;
+                var redirect = HttpContext.Current.Request.Url.AbsolutePath.Substring(0, HttpContext.Current.Request.Url.AbsolutePath.Length - search.Length);
+                return new RedirectResult(redirect, true);
             }
 
-            redirectPath = HttpContext.Current.Request.Url.AbsolutePath;
-            return false;
+            return null;
         }
     }
 }
