@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
 using System.Web;
@@ -45,7 +46,6 @@ namespace NeoSmart.Web
             }
         }
 
-        //Note: Does not support IPv6
         private static bool IsPrivateIpAddress(string ipAddress)
         {
             // http://en.wikipedia.org/wiki/Private_network
@@ -55,7 +55,27 @@ namespace NeoSmart.Web
             //  16-bit block: 192.168.0.0 through 192.168.255.255
             //  Link-local addresses: 169.254.0.0 through 169.254.255.255 (http://en.wikipedia.org/wiki/Link-local_address)
 
-            var ip = IPAddress.Parse(ipAddress);
+            IPAddress ip;
+            if (IPAddress.TryParse(ipAddress, out ip))
+            {
+                if (ip.AddressFamily == AddressFamily.InterNetworkV6)
+                {
+                    //Assume all IPv6 addresses are public-facing (no NATing)
+                    return false;
+                }
+                
+                if (ip.AddressFamily != AddressFamily.InterNetwork)
+                {
+                    //Unknown/malformed "IP" address, cant' be a web-facing IP
+                    return true; //nothing we can do about this
+                }
+            }
+            else
+            {
+                //Unknown/malformed "IP" address, cant' be a web-facing IP
+                return true; //nothing we can do about this
+            }
+
             var octets = ip.GetAddressBytes();
 
             var is24BitBlock = octets[0] == 10;
