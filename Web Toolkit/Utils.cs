@@ -18,8 +18,8 @@ namespace NeoSmart.Web
             {
                 var userHostAddress = request.UserHostAddress;
 
-                // Attempt to parse.  If it fails, we catch below and return "0.0.0.0"
-                // Could use TryParse instead, but I wanted to catch all exceptions
+                //Attempt to parse.  If it fails, we catch below and return "0.0.0.0"
+                //Could use TryParse instead, but I wanted to catch all exceptions
                 IPAddress.Parse(userHostAddress);
 
                 var xForwardedFor = request.ServerVariables.AllKeys.Contains("HTTP_X_FORWARDED_FOR") ? request.ServerVariables["HTTP_X_FORWARDED_FOR"] :
@@ -31,16 +31,16 @@ namespace NeoSmart.Web
                     return true;
                 }
 
-                // Get a list of public ip addresses in the X_FORWARDED_FOR variable
+                //Get a list of public ip addresses in the X_FORWARDED_FOR variable
                 var publicForwardingIps = xForwardedFor.Split(',').Where(ip => !IsPrivateIpAddress(ip)).ToList();
 
-                // If we found any, return the last one, otherwise return the user host address
+                //If we found any, return the last one, otherwise return the user host address
                 remote = publicForwardingIps.Any() ? publicForwardingIps.Last() : userHostAddress;
                 return true;
             }
             catch (Exception)
             {
-                // Always return all zeroes for any failure
+                //Always return all zeroes for any failure
                 remote = "0.0.0.0";
                 return false;
             }
@@ -48,8 +48,8 @@ namespace NeoSmart.Web
 
         private static bool IsPrivateIpAddress(string ipAddress)
         {
-            // http://en.wikipedia.org/wiki/Private_network
-            // Private IP Addresses are: 
+            //http://en.wikipedia.org/wiki/Private_network
+            //Private IP Addresses are: 
             //  24-bit block: 10.0.0.0 through 10.255.255.255
             //  20-bit block: 172.16.0.0 through 172.31.255.255
             //  16-bit block: 192.168.0.0 through 192.168.255.255
@@ -79,13 +79,13 @@ namespace NeoSmart.Web
             var octets = ip.GetAddressBytes();
 
             var is24BitBlock = octets[0] == 10;
-            if (is24BitBlock) return true; // Return to prevent further processing
+            if (is24BitBlock) return true; //Return to prevent further processing
 
             var is20BitBlock = octets[0] == 172 && octets[1] >= 16 && octets[1] <= 31;
-            if (is20BitBlock) return true; // Return to prevent further processing
+            if (is20BitBlock) return true; //Return to prevent further processing
 
             var is16BitBlock = octets[0] == 192 && octets[1] == 168;
-            if (is16BitBlock) return true; // Return to prevent further processing
+            if (is16BitBlock) return true; //Return to prevent further processing
 
             var isLinkLocalAddress = octets[0] == 169 && octets[1] == 254;
             return isLinkLocalAddress;
