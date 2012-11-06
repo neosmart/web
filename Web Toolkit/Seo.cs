@@ -10,16 +10,27 @@ using System.Web.Mvc;
 
 namespace NeoSmart.Web
 {
+    class CachedMethod
+    {
+        public string Controller;
+        public string Action;
+    }
+
     public class Seo
     {
-        private static readonly Dictionary<string, MethodBase> MethodCache = new Dictionary<string, MethodBase>();
+        private static readonly Dictionary<string, CachedMethod> MethodCache = new Dictionary<string, CachedMethod>();
         public static void SeoRedirect(Controller controller, [CallerFilePath] string filePath = "", [CallerLineNumber] int lineNumber = 0)
         {
             string key = string.Format("{0}:{1}", filePath, lineNumber);
-            MethodBase lastMethod;
+            CachedMethod lastMethod;
             if (!MethodCache.TryGetValue(key, out lastMethod))
             {
-                lastMethod = new StackFrame(1).GetMethod();
+                var method = new StackFrame(1).GetMethod();
+                lastMethod = new CachedMethod
+                    {
+                        Action = method.Name,
+                        Controller = method.DeclaringType.Name.Remove(method.DeclaringType.Name.Length - "Controller".Length)
+                    };
                 MethodCache.Add(key, lastMethod);
             }
 
@@ -30,23 +41,20 @@ namespace NeoSmart.Web
             }
         }
 
-        private static bool DetermineSeoRedirect(Controller controller, MethodBase method, out string destination)
+        private static bool DetermineSeoRedirect(Controller controller, CachedMethod method, out string destination)
         {
             string currentAction = (string)controller.RouteData.Values["action"];
             string currentController = (string)controller.RouteData.Values["controller"];
 
-            string realAction = method.Name;
-            string realController = method.DeclaringType.Name.Remove(method.DeclaringType.Name.Length - "Controller".Length);
-
             //Case Redirect
-            if (currentAction != realAction || currentController != realController)
+            if (currentAction != method.Action || currentController != method.Controller)
             {
-                destination = HttpContext.Current.Request.Url.AbsolutePath.Replace(currentAction, realAction).Replace(currentController, realController);
+                destination = HttpContext.Current.Request.Url.AbsolutePath.Replace(currentAction, method.Action).Replace(currentController, method.Controller);
                 return true;
             }
 
             //Trailing-backslash configuration
-            bool isIndex = realAction == "Index";
+            bool isIndex = method.Action == "Index";
             if ((isIndex && !HttpContext.Current.Request.Url.AbsolutePath.EndsWith("/")) || (!isIndex && HttpContext.Current.Request.Url.AbsolutePath.EndsWith("/")))
             {
                 destination = string.Format("{0}{1}", HttpContext.Current.Request.Url.AbsolutePath.TrimEnd(new[] { '/' }), isIndex ? "/" : "");
