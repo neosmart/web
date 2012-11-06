@@ -14,6 +14,7 @@ namespace NeoSmart.Web
     {
         public string Controller;
         public string Action;
+        public bool IsIndex;
     }
 
     public class Seo
@@ -29,7 +30,8 @@ namespace NeoSmart.Web
                 lastMethod = new CachedMethod
                     {
                         Action = method.Name,
-                        Controller = method.DeclaringType.Name.Remove(method.DeclaringType.Name.Length - "Controller".Length)
+                        Controller = method.DeclaringType.Name.Remove(method.DeclaringType.Name.Length - "Controller".Length),
+                        IsIndex =  method.Name == "Index"
                     };
                 MethodCache.Add(key, lastMethod);
             }
@@ -43,34 +45,43 @@ namespace NeoSmart.Web
 
         private static bool DetermineSeoRedirect(Controller controller, CachedMethod method, out string destination)
         {
+            bool redirect = false;
             string currentAction = (string)controller.RouteData.Values["action"];
             string currentController = (string)controller.RouteData.Values["controller"];
 
-            //Case Redirect
-            if (currentAction != method.Action || currentController != method.Controller)
+            //tentatively....
+            destination = HttpContext.Current.Request.Url.AbsolutePath;
+
+            //Case-based redirect
+            if (currentAction != method.Action)
             {
-                destination = HttpContext.Current.Request.Url.AbsolutePath.Replace(currentAction, method.Action).Replace(currentController, method.Controller);
-                return true;
+                redirect = true;
+                destination = destination.Replace(currentAction, method.Action);
             }
 
-            //Trailing-backslash configuration
-            bool isIndex = method.Action == "Index";
-            if ((isIndex && !HttpContext.Current.Request.Url.AbsolutePath.EndsWith("/")) || (!isIndex && HttpContext.Current.Request.Url.AbsolutePath.EndsWith("/")))
+            //Case-based redirect
+            if (currentController != method.Controller)
             {
-                destination = string.Format("{0}{1}", HttpContext.Current.Request.Url.AbsolutePath.TrimEnd(new[] { '/' }), isIndex ? "/" : "");
-                return true;
+                redirect = true;
+                destination = destination.Replace(currentController, method.Controller);
+            }
+
+            //Trailing-backslash configuration (this is the simplification of the NOT XNOR)
+            if ((method.IsIndex != destination.EndsWith("/")))
+            {
+                redirect = true;
+                destination = string.Format("{0}{1}", destination.TrimEnd(new[] { '/' }), method.IsIndex ? "/" : "");
             }
 
             //No Index in link
-            if (isIndex && HttpContext.Current.Request.Url.AbsolutePath.EndsWith("/Index/"))
+            if (method.IsIndex && destination.EndsWith("/Index/"))
             {
+                redirect = true;
                 const string search = "Index/";
-                destination = HttpContext.Current.Request.Url.AbsolutePath.Substring(0, HttpContext.Current.Request.Url.AbsolutePath.Length - search.Length);
-                return true;
+                destination = destination.Remove(destination.Length - search.Length);
             }
 
-            destination = HttpContext.Current.Request.Url.AbsolutePath;
-            return false;
+            return redirect;
         }
     }
 }
