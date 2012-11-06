@@ -13,7 +13,7 @@ namespace NeoSmart.Web
     public class Seo
     {
         private static readonly Dictionary<string, MethodBase> MethodCache = new Dictionary<string, MethodBase>();
-        public static void CaseSensitiveRedirect(Controller controller, [CallerFilePath] string filePath = "", [CallerLineNumber] int lineNumber = 0)
+        public static void SeoRedirect(Controller controller, [CallerFilePath] string filePath = "", [CallerLineNumber] int lineNumber = 0)
         {
             string key = string.Format("{0}:{1}", filePath, lineNumber);
             MethodBase lastMethod;
@@ -24,13 +24,13 @@ namespace NeoSmart.Web
             }
 
             string destination;
-            if (CaseSensitiveRedirect(controller, lastMethod, out destination))
+            if (DeterminSeoRedirect(controller, lastMethod, out destination))
             {
                 controller.Response.RedirectPermanent(destination);
             }
         }
 
-        private static bool CaseSensitiveRedirect(Controller controller, MethodBase method, out string destination)
+        private static bool DeterminSeoRedirect(Controller controller, MethodBase method, out string destination)
         {
             string currentAction = (string)controller.RouteData.Values["action"];
             string currentController = (string)controller.RouteData.Values["controller"];
@@ -61,7 +61,7 @@ namespace NeoSmart.Web
                 return true;
             }
 
-            destination = string.Empty;
+            destination = HttpContext.Current.Request.Url.AbsolutePath;
             return false;
         }
     }
