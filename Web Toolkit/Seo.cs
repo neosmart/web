@@ -24,13 +24,13 @@ namespace NeoSmart.Web
             }
 
             string destination;
-            if (DeterminSeoRedirect(controller, lastMethod, out destination))
+            if (DetermineSeoRedirect(controller, lastMethod, out destination))
             {
                 controller.Response.RedirectPermanent(destination);
             }
         }
 
-        private static bool DeterminSeoRedirect(Controller controller, MethodBase method, out string destination)
+        private static bool DetermineSeoRedirect(Controller controller, MethodBase method, out string destination)
         {
             string currentAction = (string)controller.RouteData.Values["action"];
             string currentController = (string)controller.RouteData.Values["controller"];
