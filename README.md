@@ -28,7 +28,7 @@ The redirection will point to the URL using the same case as the controller clas
 
 Usage is quite simple: just copy-and-paste the following line to the start of every method you desire to be SEO-redirected:
 
-```NeoSmart.Web.Seo.SeoRedirect(this)```
+`NeoSmart.Web.Seo.SeoRedirect(this)`
 
 The `SeoRedirect` class will automatically use a combination of reflection and C# 5.0's [Caller Info attributes](http://msdn.microsoft.com/en-us/library/hh534540.aspx) to deduce all the information needed to determine the correct link. Do not worry about the performance overhead of reflection - the stack trace is only obtained once, the correct controller and action info is then cached in memory for later retrieval, i.e. only the first request for any method incurs a reflection overhead.
 
@@ -69,12 +69,12 @@ The `ScopedMutex` constructor is where the unique lock/mutex name is specified i
 
 Usage is very simple:
 
-```using (var mutex = new ScopedMutex("myguid"))
-			{
-				mutex.WaitOne();
-				//Do something here
-				mutex.ReleaseMutex();
-			}```
+	using (var mutex = new ScopedMutex("myguid"))
+	{
+		mutex.WaitOne();
+		//Do something here
+		mutex.ReleaseMutex();
+	}
 
 As you can see, the `ScopedMutex` must be explicitly locked with `ScopedMutex.WaitOne()`. To prevent confusion, there is no parameter to lock on creation in the constructor as there is in the `Mutex` class.
 
@@ -100,11 +100,11 @@ We recommend placing the call to `SetCredentials` in the `Global.asax.cs` file i
 
 The result of calling `Bitly.ShortenUrl(urlToBeShortened)` is a `BitlyResult` structure:
 
-```public class BitlyResult
-{
-	public string UserHash { get; set; }
-	public string ShortUrl { get; set; }
-}```
+	public class BitlyResult
+	{
+		public string UserHash { get; set; }
+		public string ShortUrl { get; set; }
+	}
 
 The shortened URL is returned in `BitlyResult.ShortUrl`. The `BitlyResult.UserHash` field contains only the hash portion of the shortened URL (for use with alternate Bitly domains, such as j.mp, or for URI statistics-querying purposes).
 
