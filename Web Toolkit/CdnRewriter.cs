@@ -20,12 +20,12 @@ namespace NeoSmart.Web
 
     public class CdnRewriteFilter : MemoryStream
     {
-        private Stream _stream;
+        public Stream Stream { get; set; }
         public string CdnDomain { get; set; }
 
         public CdnRewriteFilter(Stream stream)
         {
-            _stream = stream;
+            Stream = stream;
         }
 
         public RewriteObjects RewriteType { get; set; }
@@ -58,7 +58,7 @@ namespace NeoSmart.Web
             }
             
             byte[] outData = Encoding.Default.GetBytes(html);
-            _stream.Write(outData, 0, outData.GetLength(0));
+            Stream.Write(outData, 0, outData.GetLength(0));
         }
 
         private string PrefixDomain(Match match)
