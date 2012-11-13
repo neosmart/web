@@ -32,11 +32,6 @@ namespace NeoSmart.Web
 
         public override void Write(byte[] buffer, int offset, int count)
         {
-            if (System.Diagnostics.Debugger.IsAttached)
-            {
-                System.Diagnostics.Debugger.Break();
-            }
-
             var html = Encoding.Default.GetString(buffer, offset, count);
 
             if ((RewriteType & RewriteObjects.Images) == RewriteObjects.Images)
