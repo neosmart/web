@@ -51,6 +51,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Bitly.cs" />
+    <Compile Include="CdnRewriter.cs" />
     <Compile Include="FraudControl.cs" />
     <Compile Include="Normalization.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
