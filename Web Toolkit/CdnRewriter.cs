@@ -20,34 +20,37 @@ namespace NeoSmart.Web
 
     public class CdnRewriteFilter : MemoryStream
     {
-        public Stream Stream { get; set; }
+        private readonly Stream _stream;
         public string CdnDomain { get; set; }
 
-        private readonly Regex[] _jsRegexes;
-        private readonly Regex[] _imgRegexes;
-        private readonly Regex[] _cssRegexes;
+        private static readonly Regex[] JsRegexes;
+        private static readonly Regex[] ImgRegexes;
+        private static readonly Regex[] CssRegexes;
 
-        public CdnRewriteFilter(Stream stream)
+        static CdnRewriteFilter()
         {
-            Stream = stream;
-
-            _jsRegexes = new[]
+            JsRegexes = new[]
                 {
                     new Regex("\"(/[^/][^\"]+.js)\"", RegexOptions.IgnoreCase),
                     new Regex("'(/[^/][^\"]+.js)'", RegexOptions.IgnoreCase)
                 };
 
-            _cssRegexes = new[]
+            CssRegexes = new[]
                 {
                     new Regex("\"(/[^/][^\"]+.css)\"", RegexOptions.IgnoreCase),
                     new Regex("'(/[^/][^\"]+.css)'", RegexOptions.IgnoreCase)
                 };
 
-            _imgRegexes = new[]
+            ImgRegexes = new[]
                 {
                     new Regex("<[^>]*img[^>]+src=\"(/[^/][^\"]+)\"", RegexOptions.IgnoreCase),
                     new Regex("<[^>]*img[^>]+src='(/[^/][^']+)'", RegexOptions.IgnoreCase)
                 };
+        }
+
+        public CdnRewriteFilter(Stream stream)
+        {
+            _stream = stream;
         }
 
         public RewriteObjects RewriteType { get; set; }
@@ -58,21 +61,21 @@ namespace NeoSmart.Web
 
             if ((RewriteType & RewriteObjects.Images) == RewriteObjects.Images)
             {
-                html = _imgRegexes.Aggregate(html, (current, regex) => regex.Replace(current, PrefixDomain));
+                html = ImgRegexes.Aggregate(html, (current, regex) => regex.Replace(current, PrefixDomain));
             }
 
             if ((RewriteType & RewriteObjects.JavaScript) == RewriteObjects.JavaScript)
             {
-                html = _jsRegexes.Aggregate(html, (current, regex) => regex.Replace(current, PrefixDomain));
+                html = JsRegexes.Aggregate(html, (current, regex) => regex.Replace(current, PrefixDomain));
             }
 
             if ((RewriteType & RewriteObjects.Css) == RewriteObjects.Css)
             {
-                html = _cssRegexes.Aggregate(html, (current, regex) => regex.Replace(current, PrefixDomain));
+                html = CssRegexes.Aggregate(html, (current, regex) => regex.Replace(current, PrefixDomain));
             }
             
             byte[] outData = Encoding.Default.GetBytes(html);
-            Stream.Write(outData, 0, outData.GetLength(0));
+            _stream.Write(outData, 0, outData.GetLength(0));
         }
 
         private string PrefixDomain(Match match)
