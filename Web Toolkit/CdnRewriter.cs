@@ -23,9 +23,31 @@ namespace NeoSmart.Web
         public Stream Stream { get; set; }
         public string CdnDomain { get; set; }
 
+        private readonly Regex[] _jsRegexes;
+        private readonly Regex[] _imgRegexes;
+        private readonly Regex[] _cssRegexes;
+
         public CdnRewriteFilter(Stream stream)
         {
             Stream = stream;
+
+            _jsRegexes = new[]
+                {
+                    new Regex("\"(/[^/][^\"]+.js)\"", RegexOptions.IgnoreCase),
+                    new Regex("'(/[^/][^\"]+.js)'", RegexOptions.IgnoreCase)
+                };
+
+            _cssRegexes = new[]
+                {
+                    new Regex("\"(/[^/][^\"]+.css)\"", RegexOptions.IgnoreCase),
+                    new Regex("'(/[^/][^\"]+.css)'", RegexOptions.IgnoreCase)
+                };
+
+            _imgRegexes = new[]
+                {
+                    new Regex("<[^>]*img[^>]+src=\"(/[^/][^\"]+)\"", RegexOptions.IgnoreCase),
+                    new Regex("<[^>]*img[^>]+src='(/[^/][^']+)'", RegexOptions.IgnoreCase)
+                };
         }
 
         public RewriteObjects RewriteType { get; set; }
@@ -36,20 +58,17 @@ namespace NeoSmart.Web
 
             if ((RewriteType & RewriteObjects.Images) == RewriteObjects.Images)
             {
-                html = Regex.Replace(html, "<[^>]*img[^>]+src=\"(/[^/][^\"]+)\"", PrefixDomain, RegexOptions.IgnoreCase);
-                html = Regex.Replace(html, "<[^>]*img[^>]+src='(/[^/][^']+)'", PrefixDomain, RegexOptions.IgnoreCase);
+                html = _imgRegexes.Aggregate(html, (current, regex) => regex.Replace(current, PrefixDomain));
             }
 
             if ((RewriteType & RewriteObjects.JavaScript) == RewriteObjects.JavaScript)
             {
-                html = Regex.Replace(html, "\"(/[^/][^\"]+.js)\"", PrefixDomain, RegexOptions.IgnoreCase);
-                html = Regex.Replace(html, "'(/[^/][^\"]+.js)'", PrefixDomain, RegexOptions.IgnoreCase);
+                html = _jsRegexes.Aggregate(html, (current, regex) => regex.Replace(current, PrefixDomain));
             }
 
             if ((RewriteType & RewriteObjects.Css) == RewriteObjects.Css)
             {
-                html = Regex.Replace(html, "\"(/[^/][^\"]+.css)\"", PrefixDomain, RegexOptions.IgnoreCase);
-                html = Regex.Replace(html, "'(/[^/][^\"]+.css)'", PrefixDomain, RegexOptions.IgnoreCase);
+                html = _cssRegexes.Aggregate(html, (current, regex) => regex.Replace(current, PrefixDomain));
             }
             
             byte[] outData = Encoding.Default.GetBytes(html);
