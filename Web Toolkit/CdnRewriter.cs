@@ -31,20 +31,20 @@ namespace NeoSmart.Web
         {
             JsRegexes = new[]
                 {
-                    new Regex("\"(/[^/][^\"]+.js)\"", RegexOptions.IgnoreCase),
-                    new Regex("'(/[^/][^\"]+.js)'", RegexOptions.IgnoreCase)
+                    new Regex("\"(/[^/][^\"]+.js)\"", RegexOptions.IgnoreCase | RegexOptions.Compiled),
+                    new Regex("'(/[^/][^\"]+.js)'", RegexOptions.IgnoreCase | RegexOptions.Compiled)
                 };
 
             CssRegexes = new[]
                 {
-                    new Regex("\"(/[^/][^\"]+.css)\"", RegexOptions.IgnoreCase),
-                    new Regex("'(/[^/][^\"]+.css)'", RegexOptions.IgnoreCase)
+                    new Regex("\"(/[^/][^\"]+.css)\"", RegexOptions.IgnoreCase | RegexOptions.Compiled),
+                    new Regex("'(/[^/][^\"]+.css)'", RegexOptions.IgnoreCase | RegexOptions.Compiled)
                 };
 
             ImgRegexes = new[]
                 {
-                    new Regex("<[^>]*img[^>]+src=\"(/[^/][^\"]+)\"", RegexOptions.IgnoreCase),
-                    new Regex("<[^>]*img[^>]+src='(/[^/][^']+)'", RegexOptions.IgnoreCase)
+                    new Regex("<[^>]*img[^>]+src=\"(/[^/][^\"]+)\"", RegexOptions.IgnoreCase | RegexOptions.Compiled),
+                    new Regex("<[^>]*img[^>]+src='(/[^/][^']+)'", RegexOptions.IgnoreCase | RegexOptions.Compiled)
                 };
         }
 
