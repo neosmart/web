@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -19,7 +20,7 @@ namespace NeoSmart.Web
 
     public class Seo
     {
-        private static readonly Dictionary<string, CachedMethod> MethodCache = new Dictionary<string, CachedMethod>();
+        private static readonly ConcurrentDictionary<string, CachedMethod> MethodCache = new ConcurrentDictionary<string, CachedMethod>();
         public static void SeoRedirect(Controller controller, [CallerFilePath] string filePath = "", [CallerLineNumber] int lineNumber = 0)
         {
             string key = string.Format("{0}:{1}", filePath, lineNumber);
@@ -33,7 +34,7 @@ namespace NeoSmart.Web
                         Controller = method.DeclaringType.Name.Remove(method.DeclaringType.Name.Length - "Controller".Length),
                         IsIndex =  method.Name == "Index"
                     };
-                MethodCache.Add(key, lastMethod);
+                MethodCache.TryAdd(key, lastMethod);
             }
 
             string destination;
