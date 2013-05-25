@@ -23,7 +23,6 @@ namespace NeoSmart.Web
         private static readonly Regex QwertyRegex = new Regex(@"^[asdfghjkl]+@", RegexOptions.Compiled);
 
         static private readonly HashSet<string> ValidDomainCache = new HashSet<string>();
-        static private readonly HashSet<string> InvalidDomainCache = new HashSet<string>();
 
         static public bool IsProbablyFakeEmail(string email, int meanness, bool validateMx = false)
         {
@@ -37,22 +36,15 @@ namespace NeoSmart.Web
 
             if (validateMx)
             {
-                if (InvalidDomainCache.Contains(mailAddress.Host))
-                    return true;
-
                 if (!ValidDomainCache.Contains(mailAddress.Host))
                 {
                     bool mxFound;
                     DnsLookup.GetMXRecords(mailAddress.Host, out mxFound);
-                    if (mxFound)
+                    if (!mxFound)
                     {
-                        ValidDomainCache.Add(mailAddress.Host);
-                    }
-                    else
-                    {
-                        InvalidDomainCache.Add(mailAddress.Host);
                         return true;
                     }
+                    ValidDomainCache.Add(mailAddress.Host);
                 }
             }
 
