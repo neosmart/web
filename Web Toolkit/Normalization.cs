@@ -1,6 +1,8 @@
 using System;
+using System.Globalization;
 using System.Text;
 using System.Collections.Generic;
+using System.Threading;
 
 namespace NeoSmart.Web
 {
@@ -134,14 +136,14 @@ namespace NeoSmart.Web
 
         public static string ProperNameCase(string stringToFormat)
         {
-            System.Globalization.CultureInfo cultureInfo = System.Threading.Thread.CurrentThread.CurrentCulture;
-            System.Globalization.TextInfo textInfo = cultureInfo.TextInfo;
+            CultureInfo cultureInfo = Thread.CurrentThread.CurrentCulture;
+            TextInfo textInfo = cultureInfo.TextInfo;
 
             //Check if we have a string to format
             if (String.IsNullOrEmpty(stringToFormat))
             {
                 //Return an empty string
-                return string.Empty;
+                return String.Empty;
             }
 
             //Check if string already contains both upper and lower, in which case assume it's correct
@@ -164,6 +166,18 @@ namespace NeoSmart.Web
             //From http://msdn.microsoft.com/en-us/library/system.globalization.textinfo.totitlecase.aspx:
             //"However, this method does not currently provide proper casing to convert a word that is entirely uppercase, such as an acronym."
             return textInfo.ToTitleCase(stringToFormat.ToLower());
+        }
+
+        static public string[] SplitName(string name)
+        {
+            name = name.Trim();
+            int lastSpace = name.LastIndexOf(' ');
+            string[] results = new string[2];
+
+            results[0] = lastSpace > 0 ? name.Substring(0, lastSpace) : name;
+            results[1] = lastSpace > 0 ? name.Substring(lastSpace + 1) : String.Empty;
+
+            return results;
         }
     }
 }
