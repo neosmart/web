@@ -91,13 +91,13 @@ namespace NeoSmart.Web
             return isLinkLocalAddress;
         }
 
-        public static string EncodeStringDictionary(Dictionary<string, string> dictionary)
+        public static string EncodeStringDictionary(IDictionary<string, string> dictionary)
         {
             var sb = new StringBuilder();
 
             foreach (var kv in dictionary)
             {
-                sb.AppendFormat("{0}={1}&", Uri.EscapeUriString(kv.Key), Uri.EscapeUriString(kv.Value));
+                sb.AppendFormat("{0}={1}&", Uri.EscapeDataString(kv.Key), Uri.EscapeDataString(kv.Value));
             }
 
             //Trim trailing &
