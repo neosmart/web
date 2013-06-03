@@ -16,9 +16,9 @@ namespace NeoSmart.Web
                                      RegexOptions.Compiled, TimeSpan.FromMilliseconds(250));
         private static readonly Regex NumericEmailRegex = new Regex(@"^[0-9]+@", RegexOptions.Compiled);
         private static readonly Regex NumericDomainRegex = new Regex(@"@[0-9]+\.[^.]+$", RegexOptions.Compiled);
-        private static readonly Regex TldRegex = new Regex(@"\.(ru|cn|info|tk)$", RegexOptions.Compiled);
-        private static readonly Regex DomainPrefixRegex = new Regex(@"@(spam|webmaster|example|nospam|junk|none)", RegexOptions.Compiled);
-        private static readonly Regex PrefixRegex = new Regex(@"^(postmaster|abuse|nospam|spam|junk|noone|none|no1)", RegexOptions.Compiled);
+        private static readonly Regex TldRegex = new Regex(@"\.(ru|cn|info|tk|om)$", RegexOptions.Compiled);
+        private static readonly Regex DomainPrefixRegex = new Regex(@"@(spam|webmaster|example|nospam|junk|none|test|sample)", RegexOptions.Compiled);
+        private static readonly Regex PrefixRegex = new Regex(@"^(postmaster|abuse|nospam|spam|junk|noone|none|no1|test|example|sample|thanks|nothank|noway)", RegexOptions.Compiled);
         private static readonly Regex WordFilterRegex = new Regex(@"fuck|bitch|bastard|spam|junk", RegexOptions.Compiled);
         private static readonly Regex QwertyRegex = new Regex(@"^[asdfghjkl]+@", RegexOptions.Compiled);
 
@@ -33,20 +33,6 @@ namespace NeoSmart.Web
             }
 
             var mailAddress = new MailAddress(email);
-
-            if (validateMx)
-            {
-                if (!ValidDomainCache.Contains(mailAddress.Host))
-                {
-                    bool mxFound;
-                    DnsLookup.GetMXRecords(mailAddress.Host, out mxFound);
-                    if (!mxFound)
-                    {
-                        return true;
-                    }
-                    ValidDomainCache.Add(mailAddress.Host);
-                }
-            }
 
             if (meanness >= 1)
             {
@@ -78,6 +64,21 @@ namespace NeoSmart.Web
             {
                 if (TldRegex.IsMatch(email))
                     return true;
+            }
+
+            //Do this last because it's the most expensive
+            if (validateMx)
+            {
+                if (!ValidDomainCache.Contains(mailAddress.Host))
+                {
+                    bool mxFound;
+                    DnsLookup.GetMXRecords(mailAddress.Host, out mxFound);
+                    if (!mxFound)
+                    {
+                        return true;
+                    }
+                    ValidDomainCache.Add(mailAddress.Host);
+                }
             }
 
             return false;
@@ -233,6 +234,7 @@ namespace NeoSmart.Web
                 "e4ward.com",
                 "easytrashmail.com",
                 "einrot.de",
+                "email.com",
                 "emailgo.de",
                 "emailias.com",
                 "email60.com",
@@ -291,6 +293,7 @@ namespace NeoSmart.Web
                 "herp.in",
                 "hidzz.com",
                 "hochsitze.com",
+                "hotmil.com",
                 "hotpop.com",
                 "hulapla.de",
                 "hushmail.com",
@@ -301,6 +304,7 @@ namespace NeoSmart.Web
                 "incognitomail.net",
                 "incognitomail.org",
                 "instant-mail.de",
+                "internet.com",
                 "ipoo.org",
                 "irish2me.com",
                 "jetable.com",
@@ -551,6 +555,7 @@ namespace NeoSmart.Web
                 "willselfdestruct.com",
                 "winemaven.info",
                 "wuzupmail.net",
+                "yaho.com",
                 "yahoo.com.ph",
                 "yahoo.com.vn",
                 "yeah.net",
