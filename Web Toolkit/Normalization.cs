@@ -170,6 +170,11 @@ namespace NeoSmart.Web
 
         static public string[] SplitName(string name)
         {
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                name = string.Empty;
+            }
+
             name = name.Trim();
             int lastSpace = name.LastIndexOf(' ');
             string[] results = new string[2];
