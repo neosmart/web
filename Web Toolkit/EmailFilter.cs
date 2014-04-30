@@ -26,6 +26,11 @@ namespace NeoSmart.Web
 
         static public bool IsProbablyFakeEmail(string email, int meanness, bool validateMx = false)
         {
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                return true;
+            }
+
             //Instead of making all the regex rules case-insensitive
             email = email.ToLower();
 
