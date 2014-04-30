@@ -36,8 +36,9 @@ namespace NeoSmart.Web
             objectName = Uri.EscapeUriString(objectName);
             objectName = objectName.Replace("%2F", "/");
             objectName = objectName.Replace("+", "%20");
-            
-            string s3Url = otherDomain ? "http://" + bucket : (secure ? "https://" : "http://") + "s3.amazonaws.com";
+
+            string s3Url = string.Format("http{0}://{1}{2}", secure ? "s" : "", bucket, otherDomain ? "" : ".s3.amazonaws.com");
+            //string s3Url = otherDomain ? "http://" + bucket : string.Format("{0}{1}.s3.amazonaws.com", (secure ? "https://" : "http://"), bucket);
             Int64 expiresTime = ((Int64)expires.TotalSeconds) + (Int64)AWSSDKUtils.ConvertToUnixEpochMilliSeconds(DateTime.UtcNow);
             string bucketName = "/" + bucket;
             string options = string.Format("response-content-disposition=attachment; filename=\"{0}\"", filename);
@@ -50,7 +51,7 @@ namespace NeoSmart.Web
             options = options.Replace(" ", "%20");
             
             string url = string.Format("{0}{1}{2}?AWSAccessKeyId={3}&Expires={4}&Signature={5}&{6}",
-                s3Url, !otherDomain ? bucketName : string.Empty, objectName, _username, expiresTime, encoded, options);
+                s3Url, string.Empty, objectName, _username, expiresTime, encoded, options);
 
             return url;
         }
