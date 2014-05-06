@@ -52,6 +52,7 @@
   <ItemGroup>
     <Compile Include="Bitly.cs" />
     <Compile Include="CdnRewriter.cs" />
+    <Compile Include="DictionaryExtensions.cs" />
     <Compile Include="DnsLookup.cs" />
     <Compile Include="EmailFilter.cs" />
     <Compile Include="FraudControl.cs" />
