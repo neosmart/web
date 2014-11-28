@@ -5,6 +5,13 @@ using Amazon.Util;
 
 namespace NeoSmart.Web
 {
+    public enum S3LinkType
+    {
+        Subdomain,
+        Subfolder,
+        Cname
+    };
+
     public static class S3
     {
         private static string _username;
@@ -18,15 +25,10 @@ namespace NeoSmart.Web
 
         public static string GetCustomExpiringLink(string cname, string objectName, TimeSpan expires)
         {
-            return GetExpiringLink(cname, objectName, expires, false, true);
+            return GetExpiringLink(cname, objectName, expires, S3LinkType.Cname);
         }
 
-        public static string GetExpiringLink(string bucket, string objectName, TimeSpan expires)
-        {
-            return GetExpiringLink(bucket, objectName, expires, true, false);
-        }
-
-        public static string GetExpiringLink(string bucket, string objectName, TimeSpan expires, bool secure, bool cname)
+        public static string GetExpiringLink(string bucket, string objectName, TimeSpan expires, S3LinkType linkType = S3LinkType.Subdomain, bool secure = false)
         {
             string filename = System.IO.Path.GetFileName(objectName);
             filename = filename.Replace("%20", " ");
@@ -37,8 +39,16 @@ namespace NeoSmart.Web
             objectName = objectName.Replace("%2F", "/");
             objectName = objectName.Replace("+", "%20");
 
-            string s3Url = string.Format("http{0}://{1}{2}", secure ? "s" : "", cname ? "" : "s3.amazonaws.com/", bucket);
-            //string s3Url = string.Format("http{0}://{1}{2}", secure ? "s" : "", bucket, cname ? "" : ".s3.amazonaws.com");
+            string s3Url;
+            if (linkType == S3LinkType.Subfolder)
+            {
+                s3Url = string.Format("http{0}://s3.amazonaws.com/{1}", secure ? "s" : "", bucket);
+            }
+            else
+            {
+                s3Url = string.Format("http{0}://{1}{2}", secure ? "s" : "", bucket, linkType == S3LinkType.Cname ? "" : ".s3.amazonaws.com");
+            }
+
             Int64 expiresTime = ((Int64)expires.TotalSeconds) + (Int64)AWSSDKUtils.ConvertToUnixEpochMilliSeconds(DateTime.UtcNow);
             string bucketName = "/" + bucket;
             string options = string.Format("response-content-disposition=attachment; filename=\"{0}\"", filename);
