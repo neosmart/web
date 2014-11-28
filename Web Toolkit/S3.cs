@@ -26,7 +26,7 @@ namespace NeoSmart.Web
             return GetExpiringLink(bucket, objectName, expires, true, false);
         }
 
-        public static string GetExpiringLink(string bucket, string objectName, TimeSpan expires, bool secure, bool otherDomain)
+        public static string GetExpiringLink(string bucket, string objectName, TimeSpan expires, bool secure, bool cname)
         {
             string filename = System.IO.Path.GetFileName(objectName);
             filename = filename.Replace("%20", " ");
@@ -37,8 +37,8 @@ namespace NeoSmart.Web
             objectName = objectName.Replace("%2F", "/");
             objectName = objectName.Replace("+", "%20");
 
-            string s3Url = string.Format("http{0}://{1}{2}", secure ? "s" : "", bucket, otherDomain ? "" : ".s3.amazonaws.com");
-            //string s3Url = otherDomain ? "http://" + bucket : string.Format("{0}{1}.s3.amazonaws.com", (secure ? "https://" : "http://"), bucket);
+            string s3Url = string.Format("http{0}://{1}{2}", secure ? "s" : "", cname ? "" : "s3.amazonaws.com/", bucket);
+            //string s3Url = string.Format("http{0}://{1}{2}", secure ? "s" : "", bucket, cname ? "" : ".s3.amazonaws.com");
             Int64 expiresTime = ((Int64)expires.TotalSeconds) + (Int64)AWSSDKUtils.ConvertToUnixEpochMilliSeconds(DateTime.UtcNow);
             string bucketName = "/" + bucket;
             string options = string.Format("response-content-disposition=attachment; filename=\"{0}\"", filename);
