@@ -35,6 +35,11 @@ namespace NeoSmart.Web
 
         public static bool ValidatePurchase(HttpRequestBase request, string cardFingerprint, bool throwException = true)
         {
+            if (string.IsNullOrWhiteSpace(cardFingerprint))
+            {
+                return true;
+            }
+
             string remote;
             if (!Utils.GetClientIpAddress(request, out remote))
             {
