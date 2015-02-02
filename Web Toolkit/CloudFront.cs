@@ -37,7 +37,7 @@ namespace NeoSmart.Web
             }
         }
 
-        public static string ToUrlSafeBase64String(byte[] input)
+        private static string ToUrlSafeBase64String(byte[] input)
         {
             return Convert.ToBase64String(input)
                     .Replace('+', '-')
@@ -58,9 +58,8 @@ namespace NeoSmart.Web
 
             var expiresTime = DateTime.UtcNow + expires;
             var expiresEpoch = AWSSDKUtils.ConvertToUnixEpochSeconds(expiresTime);
-            string options = string.Format("response-content-disposition=attachment; filename=\"{0}\"", filename);
-            options = options.Replace(" ", "%20");
-            string baseUrl = string.Format("http{0}://{1}{2}?{3}", secure ? "s" : "", domainName, objectName, options);
+            string options = Uri.EscapeDataString(string.Format("attachment; filename=\"{0}\"", filename)).Replace(" ", "%20");
+            string baseUrl = string.Format("http{0}://{1}{2}?response-content-disposition={3}", secure ? "s" : "", domainName, objectName, options);
 
             var policy = new
             {
@@ -82,7 +81,6 @@ namespace NeoSmart.Web
 
             string policyString = policy.ToJson().Replace("AWS_", "AWS:");
             string encodedPolicy = ToUrlSafeBase64String(Encoding.ASCII.GetBytes(policyString));
-
             string encodedSignature = ToUrlSafeBase64String(GetSignature(policyString));
 
             string url = string.Format("{0}&Policy={1}&Signature={2}&Key-Pair-Id={3}", baseUrl, encodedPolicy, encodedSignature, _keyPairId);
