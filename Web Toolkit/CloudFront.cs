@@ -45,7 +45,7 @@ namespace NeoSmart.Web
                     .Replace('/', '~');
         }
 
-        public static string GetExpiringLink(string domainName, string objectName, TimeSpan expires, bool secure = false)
+        public static string GetExpiringLink(string domainName, string objectName, TimeSpan expires, TimeSpan? maxAge = null, bool secure = false)
         {
             string filename = Path.GetFileName(objectName);
             filename = filename.Replace("%20", " ");
@@ -56,10 +56,13 @@ namespace NeoSmart.Web
             objectName = objectName.Replace("%2F", "/");
             objectName = objectName.Replace("+", "%20");
 
+            Int64 maxAgeSeconds = maxAge == null ? 1209600 : (Int64) maxAge.Value.TotalSeconds;
+
             var expiresTime = DateTime.UtcNow + expires;
             var expiresEpoch = AWSSDKUtils.ConvertToUnixEpochSeconds(expiresTime);
-            string options = Uri.EscapeDataString(string.Format("attachment; filename=\"{0}\"", filename)).Replace(" ", "%20");
-            string baseUrl = string.Format("http{0}://{1}{2}?response-content-disposition={3}", secure ? "s" : "", domainName, objectName, options);
+            string contentDisposition = Uri.EscapeDataString(string.Format("attachment; filename=\"{0}\"", filename)).Replace(" ", "%20");
+            string cacheControl = Uri.EscapeDataString(string.Format("max-age={0}", maxAgeSeconds)).Replace(" ", "%20");
+            string baseUrl = string.Format("http{0}://{1}{2}?response-content-disposition={3}&response-cache-control={4}", secure ? "s" : "", domainName, objectName, contentDisposition, cacheControl);
 
             var policy = new
             {
