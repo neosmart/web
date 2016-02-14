@@ -27,6 +27,8 @@ namespace NeoSmart.Web
         private static readonly Dictionary<string, ClientProfile> ClientHistory = new Dictionary<string, ClientProfile>(); //ip is key
         private static readonly HashSet<string> BannedRemotes = new HashSet<string>();
 
+        public static IEnumerable<string> BannedAddresses => BannedRemotes;
+
         public static int MaxCardsPerIp
         {
             get { return _maxCards; }
