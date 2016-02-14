@@ -39,6 +39,10 @@
       <HintPath>..\packages\AWSSDK.2.3.34.0\lib\net45\AWSSDK.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="CityHash, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\CityHash.Net.1.0.1\lib\net45\CityHash.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="NServiceKit.Text">
       <HintPath>..\packages\NServiceKit.Text.1.0.10\lib\net35\NServiceKit.Text.dll</HintPath>
     </Reference>
@@ -68,7 +72,6 @@
     <Compile Include="S3.cs" />
     <Compile Include="ScopedMutex.cs" />
     <Compile Include="Seo.cs" />
-    <Compile Include="StringBuilderExtensions.cs" />
     <Compile Include="Utils.cs" />
   </ItemGroup>
   <ItemGroup>
