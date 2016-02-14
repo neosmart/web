@@ -35,9 +35,9 @@
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="AWSSDK, Version=2.3.10.0, Culture=neutral, PublicKeyToken=9f476d3089b52be3, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\AWSSDK.2.3.10.0\lib\net45\AWSSDK.dll</HintPath>
+    <Reference Include="AWSSDK, Version=2.3.34.0, Culture=neutral, PublicKeyToken=9f476d3089b52be3, processorArchitecture=MSIL">
+      <HintPath>..\packages\AWSSDK.2.3.34.0\lib\net45\AWSSDK.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="NServiceKit.Text">
       <HintPath>..\packages\NServiceKit.Text.1.0.10\lib\net35\NServiceKit.Text.dll</HintPath>
@@ -68,6 +68,7 @@
     <Compile Include="S3.cs" />
     <Compile Include="ScopedMutex.cs" />
     <Compile Include="Seo.cs" />
+    <Compile Include="StringBuilderExtensions.cs" />
     <Compile Include="Utils.cs" />
   </ItemGroup>
   <ItemGroup>

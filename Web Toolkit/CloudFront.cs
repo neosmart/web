@@ -47,6 +47,11 @@ namespace NeoSmart.Web
 
         public static string GetExpiringLink(string domainName, string objectName, TimeSpan expires, TimeSpan? maxAge = null, bool secure = false)
         {
+            return GetExpiringLink(domainName, objectName, DateTime.UtcNow + expires, maxAge, secure);
+        }
+
+        public static string GetExpiringLink(string domainName, string objectName, DateTime expiresTime, TimeSpan? maxAge = null, bool secure = false)
+        {
             string filename = Path.GetFileName(objectName);
             filename = filename.Replace("%20", " ");
             filename = filename.Replace("+", " ");
@@ -58,7 +63,6 @@ namespace NeoSmart.Web
 
             Int64 maxAgeSeconds = maxAge == null ? 1209600 : (Int64) maxAge.Value.TotalSeconds;
 
-            var expiresTime = DateTime.UtcNow + expires;
             var expiresEpoch = AWSSDKUtils.ConvertToUnixEpochSeconds(expiresTime);
             string contentDisposition = Uri.EscapeDataString(string.Format("attachment; filename=\"{0}\"", filename)).Replace(" ", "%20");
             string cacheControl = Uri.EscapeDataString(string.Format("max-age={0}", maxAgeSeconds)).Replace(" ", "%20");
