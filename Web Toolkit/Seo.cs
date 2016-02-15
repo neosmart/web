@@ -1,4 +1,5 @@
-﻿using System.Collections.Concurrent;
+﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -14,7 +15,7 @@ namespace NeoSmart.Web
         public string Controller;
         public string Action;
         public bool IsIndex;
-        public HashSet<string> PreservedParameters;
+        public string[] PreservedParameters;
     }
 
     public class Seo
@@ -55,39 +56,60 @@ namespace NeoSmart.Web
                 if (stripQueryStrings == QueryStringBehavior.KeepActionParameters)
                 {
                     //Optimization: if no explicitly preserved query strings and no action parameters, avoid creating HashSet and strip all
-                    if ((additionalPreservedKeys == null || additionalPreservedKeys.Length == 0) &&
-                        method.GetParameters().Length == 0)
+                    if ((additionalPreservedKeys == null || additionalPreservedKeys.Length == 0) && method.GetParameters().Length == 0)
                     {
                         //This won't actually persist anywhere because it's only set once during the reflection phase and not included in the cache entry
                         //we're relying on checking if HashSet == null in DetermineSeoRedirect
+#if DEBUG
+                        //I'd leave it in here and rely on the compiler to strip it out, but...
                         stripQueryStrings = QueryStringBehavior.StripAll;
+#endif
                     }
                     else
                     {
-                        callingMethod.PreservedParameters = new HashSet<string>();
+                        int i = 0;
+                        bool skippedId = false;
+                        bool routeHasId = controller.RouteData.Values.ContainsKey("id");
+                        bool requestHasId = HttpContext.Current.Request.QueryString.Keys.Cast<string>().Any(queryKey => queryKey == "id");
+                        callingMethod.PreservedParameters = new string[(method.GetParameters().Length + (additionalPreservedKeys?.Length ?? 0))];
                         foreach (var preserved in method.GetParameters())
                         {
                             //Optimization: remove the 'id' parameter if it's determined by the route, potentially saving on HashSet lookup entirely
-                            if (preserved.Name == "id" && controller.RouteData.Values.ContainsKey("id") &&
-                                HttpContext.Current.Request.QueryString.Keys.Cast<string>().All(queryKey => queryKey != "id"))
+                            if (!skippedId && routeHasId && !requestHasId && preserved.Name == "id")
                             {
                                 //The parameter id is part of the route and not obtained via query string parameters
+                                if (callingMethod.PreservedParameters.Length == 1)
+                                {
+                                    //Bypass everything, no need for parameter preservation
+                                    //This won't actually persist anywhere because it's only set once during the reflection phase and not included in the cache entry
+                                    //we're relying on checking if HashSet == null in DetermineSeoRedirect
+#if DEBUG
+                                    //I'd leave it in here and rely on the compiler to strip it out, but...
+                                    stripQueryStrings = QueryStringBehavior.StripAll;
+#endif
+                                    callingMethod.PreservedParameters = null;
+                                    break;
+                                }
+
+                                skippedId = true;
+                                var newPreserved = new string[callingMethod.PreservedParameters.Length - 1];
+                                Array.Copy(callingMethod.PreservedParameters, 0, newPreserved, 0, i);
+                                callingMethod.PreservedParameters = newPreserved;
                                 continue;
                             }
-                            callingMethod.PreservedParameters.Add(preserved.Name);
+                            callingMethod.PreservedParameters[i++] = preserved.Name;
                         }
                         if (additionalPreservedKeys != null)
                         {
                             foreach (var preserved in additionalPreservedKeys)
                             {
-                                callingMethod.PreservedParameters.Add(preserved);
+                                callingMethod.PreservedParameters[i++] = preserved;
                             }
                         }
 
-                        if (callingMethod.PreservedParameters.Count == 0)
+                        if (callingMethod.PreservedParameters != null && callingMethod.PreservedParameters.Length > 1)
                         {
-                            stripQueryStrings = QueryStringBehavior.StripAll;
-                            callingMethod.PreservedParameters = null;
+                            Array.Sort(callingMethod.PreservedParameters);
                         }
                     }
                 }
@@ -109,6 +131,7 @@ namespace NeoSmart.Web
             string currentController = (string)controller.RouteData.Values["controller"];
 
             //tentatively....
+            //note: not using a string builder because the assumption is that most requests are correct
             destination = HttpContext.Current.Request.Url.AbsolutePath;
 
             //Case-based redirect
@@ -147,13 +170,13 @@ namespace NeoSmart.Web
             }
             else if (stripQueryStrings == QueryStringBehavior.KeepActionParameters)
             {
-                if (HttpContext.Current.Request.QueryString.AllKeys.Any(queryString => !method.PreservedParameters.Contains(queryString)))
+                if (HttpContext.Current.Request.QueryString.AllKeys.Any(k => Array.BinarySearch(method.PreservedParameters, k) < 0))
                 {
                     redirect = true;
 
                     var i = 0;
                     StringBuilder qsBuilder = null;
-                    foreach (var key in HttpContext.Current.Request.QueryString.AllKeys.Where(method.PreservedParameters.Contains))
+                    foreach (var key in HttpContext.Current.Request.QueryString.AllKeys.Where(k => Array.BinarySearch(method.PreservedParameters, k) >= 0))
                     {
                         var value = HttpContext.Current.Request.QueryString[key];
                         qsBuilder = qsBuilder ?? new StringBuilder();
