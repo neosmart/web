@@ -18,7 +18,7 @@ namespace NeoSmart.Web
         public string[] PreservedParameters;
     }
 
-    public class Seo
+    static public class Seo
     {
         public enum QueryStringBehavior
         {
@@ -29,12 +29,12 @@ namespace NeoSmart.Web
 
         private static readonly ConcurrentDictionary<ulong, CachedMethod> MethodCache = new ConcurrentDictionary<ulong, CachedMethod>();
 
-        public static void SeoRedirect(Controller controller, string[] alsoPreserveQueryStringKeys, [CallerFilePath] string filePath = "", [CallerLineNumber] int lineNumber = 0)
+        public static void SeoRedirect(this Controller controller, string[] alsoPreserveQueryStringKeys, [CallerFilePath] string filePath = "", [CallerLineNumber] int lineNumber = 0)
         {
             SeoRedirect(controller, QueryStringBehavior.KeepActionParameters, alsoPreserveQueryStringKeys, filePath, lineNumber);
         }
 
-        public static void SeoRedirect(Controller controller, QueryStringBehavior stripQueryStrings = QueryStringBehavior.KeepActionParameters, [CallerFilePath] string filePath = "", [CallerLineNumber] int lineNumber = 0)
+        public static void SeoRedirect(this Controller controller, QueryStringBehavior stripQueryStrings = QueryStringBehavior.KeepActionParameters, [CallerFilePath] string filePath = "", [CallerLineNumber] int lineNumber = 0)
         {
             SeoRedirect(controller, stripQueryStrings, null, filePath, lineNumber);
         }
