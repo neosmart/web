@@ -27,7 +27,6 @@ namespace NeoSmart.Web
         }
 
         private static readonly ConcurrentDictionary<ulong, CachedMethod> MethodCache = new ConcurrentDictionary<ulong, CachedMethod>();
-        private static readonly HashSet<string> IdHashSet = new HashSet<string>() {"id"};
 
         public static void SeoRedirect(Controller controller, string[] alsoPreserveQueryStringKeys, [CallerFilePath] string filePath = "", [CallerLineNumber] int lineNumber = 0)
         {
@@ -63,19 +62,18 @@ namespace NeoSmart.Web
                         //we're relying on checking if HashSet == null in DetermineSeoRedirect
                         stripQueryStrings = QueryStringBehavior.StripAll;
                     }
-                    //Very, very primitive (yet effective) optimization to handle the common case of a single "id" parameter and KeepActionParameters
-                    //ideally, this would be dynamic based off of route detection or else storing hashsets in a dictionary based off of their content
-                    //or using a bloom filter instead of a hashset (to-do: explore bloom filter)
-                    else if ((additionalPreservedKeys == null || additionalPreservedKeys.Length == 0) &&
-                             method.GetParameters().Length == 1 && method.GetParameters()[0].Name == "id")
-                    {
-                        callingMethod.PreservedParameters = IdHashSet;
-                    }
                     else
                     {
                         callingMethod.PreservedParameters = new HashSet<string>();
                         foreach (var preserved in method.GetParameters())
                         {
+                            //Optimization: remove the 'id' parameter if it's determined by the route, potentially saving on HashSet lookup entirely
+                            if (preserved.Name == "id" && controller.RouteData.Values.ContainsKey("id") &&
+                                HttpContext.Current.Request.QueryString.Keys.Cast<string>().All(queryKey => queryKey != "id"))
+                            {
+                                //The parameter id is part of the route and not obtained via query string parameters
+                                continue;
+                            }
                             callingMethod.PreservedParameters.Add(preserved.Name);
                         }
                         if (additionalPreservedKeys != null)
@@ -84,6 +82,12 @@ namespace NeoSmart.Web
                             {
                                 callingMethod.PreservedParameters.Add(preserved);
                             }
+                        }
+
+                        if (callingMethod.PreservedParameters.Count == 0)
+                        {
+                            stripQueryStrings = QueryStringBehavior.StripAll;
+                            callingMethod.PreservedParameters = null;
                         }
                     }
                 }
