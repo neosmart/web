@@ -27,6 +27,7 @@ namespace NeoSmart.Web
         }
 
         private static readonly ConcurrentDictionary<ulong, CachedMethod> MethodCache = new ConcurrentDictionary<ulong, CachedMethod>();
+        private static readonly HashSet<string> IdHashSet = new HashSet<string>() {"id"};
 
         public static void SeoRedirect(Controller controller, string[] alsoPreserveQueryStringKeys, [CallerFilePath] string filePath = "", [CallerLineNumber] int lineNumber = 0)
         {
@@ -52,25 +53,37 @@ namespace NeoSmart.Web
                     IsIndex = method.Name == "Index"
                 };
 
-                //Optimization: if no explicitly preserved query strings and no action parameters, avoid creating HashSet and strip all
-                if (method.GetParameters().Length == 0 && (additionalPreservedKeys == null || additionalPreservedKeys.Length == 0))
+                if (stripQueryStrings == QueryStringBehavior.KeepActionParameters)
                 {
-                    //This won't actually persist anywhere because it's only set once during the reflection phase and not included in the cache entry
-                    //we're relying on checking if HashSet == null in DetermineSeoRedirect
-                    stripQueryStrings = QueryStringBehavior.StripAll;
-                }
-                else if (stripQueryStrings == QueryStringBehavior.KeepActionParameters)
-                {
-                    callingMethod.PreservedParameters = new HashSet<string>();
-                    foreach (var preserved in method.GetParameters())
+                    //Optimization: if no explicitly preserved query strings and no action parameters, avoid creating HashSet and strip all
+                    if ((additionalPreservedKeys == null || additionalPreservedKeys.Length == 0) &&
+                        method.GetParameters().Length == 0)
                     {
-                        callingMethod.PreservedParameters.Add(preserved.Name);
+                        //This won't actually persist anywhere because it's only set once during the reflection phase and not included in the cache entry
+                        //we're relying on checking if HashSet == null in DetermineSeoRedirect
+                        stripQueryStrings = QueryStringBehavior.StripAll;
                     }
-                    if (additionalPreservedKeys != null)
+                    //Very, very primitive (yet effective) optimization to handle the common case of a single "id" parameter and KeepActionParameters
+                    //ideally, this would be dynamic based off of route detection or else storing hashsets in a dictionary based off of their content
+                    //or using a bloom filter instead of a hashset (to-do: explore bloom filter)
+                    else if ((additionalPreservedKeys == null || additionalPreservedKeys.Length == 0) &&
+                             method.GetParameters().Length == 1 && method.GetParameters()[0].Name == "id")
                     {
-                        foreach (var preserved in additionalPreservedKeys)
+                        callingMethod.PreservedParameters = IdHashSet;
+                    }
+                    else
+                    {
+                        callingMethod.PreservedParameters = new HashSet<string>();
+                        foreach (var preserved in method.GetParameters())
                         {
-                            callingMethod.PreservedParameters.Add(preserved);
+                            callingMethod.PreservedParameters.Add(preserved.Name);
+                        }
+                        if (additionalPreservedKeys != null)
+                        {
+                            foreach (var preserved in additionalPreservedKeys)
+                            {
+                                callingMethod.PreservedParameters.Add(preserved);
+                            }
                         }
                     }
                 }
