@@ -193,6 +193,10 @@ namespace NeoSmart.Web
                     }
                 }
             }
+            else //QueryStringBehavior.KeepAll
+            {
+                destination += HttpContext.Current.Request.Url.Query;
+            }
 
             return redirect;
         }
