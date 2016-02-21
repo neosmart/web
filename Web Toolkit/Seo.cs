@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Web;
@@ -31,94 +32,114 @@ namespace NeoSmart.Web
 
         public static void SeoRedirect(this Controller controller, string[] alsoPreserveQueryStringKeys, [CallerFilePath] string filePath = "", [CallerLineNumber] int lineNumber = 0)
         {
-            SeoRedirect(controller, QueryStringBehavior.KeepActionParameters, alsoPreserveQueryStringKeys, filePath, lineNumber);
+            var key = CityHash.CityHash.CityHash64(filePath, (ulong)lineNumber);
+            CachedMethod cachedMethod;
+            if (MethodCache.TryGetValue(key, out cachedMethod))
+            {
+                string destination;
+                if (DetermineSeoRedirect(controller, cachedMethod, QueryStringBehavior.KeepActionParameters, out destination))
+                {
+                    controller.Response.RedirectPermanent(destination);
+                }
+                return;
+            }
+
+            var callingMethod = new StackFrame(1).GetMethod();
+            SeoRedirect(controller, QueryStringBehavior.KeepActionParameters, alsoPreserveQueryStringKeys, callingMethod, key);
         }
 
         public static void SeoRedirect(this Controller controller, QueryStringBehavior stripQueryStrings = QueryStringBehavior.KeepActionParameters, [CallerFilePath] string filePath = "", [CallerLineNumber] int lineNumber = 0)
         {
-            SeoRedirect(controller, stripQueryStrings, null, filePath, lineNumber);
-        }
-
-        private static void SeoRedirect(Controller controller, QueryStringBehavior stripQueryStrings, string[] additionalPreservedKeys, string filePath, int lineNumber)
-        {
-            var key = CityHash.CityHash.CityHash64(filePath, (ulong) lineNumber);
-            CachedMethod callingMethod;
-            if (!MethodCache.TryGetValue(key, out callingMethod))
+            var key = CityHash.CityHash.CityHash64(filePath, (ulong)lineNumber);
+            CachedMethod cachedMethod;
+            if (MethodCache.TryGetValue(key, out cachedMethod))
             {
-                var method = new StackFrame(2).GetMethod();
-                callingMethod = new CachedMethod
+                string destination;
+                if (DetermineSeoRedirect(controller, cachedMethod, stripQueryStrings, out destination))
                 {
-                    Action = method.Name,
-                    Controller = method.DeclaringType.Name.Remove(method.DeclaringType.Name.Length - "Controller".Length),
-                    IsIndex = method.Name == "Index"
-                };
-
-                if (stripQueryStrings == QueryStringBehavior.KeepActionParameters)
-                {
-                    //Optimization: if no explicitly preserved query strings and no action parameters, avoid creating HashSet and strip all
-                    if ((additionalPreservedKeys == null || additionalPreservedKeys.Length == 0) && method.GetParameters().Length == 0)
-                    {
-                        //This won't actually persist anywhere because it's only set once during the reflection phase and not included in the cache entry
-                        //we're relying on checking if HashSet == null in DetermineSeoRedirect
-#if DEBUG
-                        //I'd leave it in here and rely on the compiler to strip it out, but...
-                        stripQueryStrings = QueryStringBehavior.StripAll;
-#endif
-                    }
-                    else
-                    {
-                        int i = 0;
-                        bool skippedId = false;
-                        bool routeHasId = controller.RouteData.Values.ContainsKey("id");
-                        bool requestHasId = HttpContext.Current.Request.QueryString.Keys.Cast<string>().Any(queryKey => queryKey == "id");
-                        callingMethod.PreservedParameters = new string[(method.GetParameters().Length + (additionalPreservedKeys?.Length ?? 0))];
-                        foreach (var preserved in method.GetParameters())
-                        {
-                            //Optimization: remove the 'id' parameter if it's determined by the route, potentially saving on HashSet lookup entirely
-                            if (!skippedId && routeHasId && !requestHasId && preserved.Name == "id")
-                            {
-                                //The parameter id is part of the route and not obtained via query string parameters
-                                if (callingMethod.PreservedParameters.Length == 1)
-                                {
-                                    //Bypass everything, no need for parameter preservation
-                                    //This won't actually persist anywhere because it's only set once during the reflection phase and not included in the cache entry
-                                    //we're relying on checking if HashSet == null in DetermineSeoRedirect
-#if DEBUG
-                                    //I'd leave it in here and rely on the compiler to strip it out, but...
-                                    stripQueryStrings = QueryStringBehavior.StripAll;
-#endif
-                                    callingMethod.PreservedParameters = null;
-                                    break;
-                                }
-
-                                skippedId = true;
-                                var newPreserved = new string[callingMethod.PreservedParameters.Length - 1];
-                                Array.Copy(callingMethod.PreservedParameters, 0, newPreserved, 0, i);
-                                callingMethod.PreservedParameters = newPreserved;
-                                continue;
-                            }
-                            callingMethod.PreservedParameters[i++] = preserved.Name;
-                        }
-                        if (additionalPreservedKeys != null)
-                        {
-                            foreach (var preserved in additionalPreservedKeys)
-                            {
-                                callingMethod.PreservedParameters[i++] = preserved;
-                            }
-                        }
-
-                        if (callingMethod.PreservedParameters != null && callingMethod.PreservedParameters.Length > 1)
-                        {
-                            Array.Sort(callingMethod.PreservedParameters);
-                        }
-                    }
+                    controller.Response.RedirectPermanent(destination);
                 }
-
-                MethodCache.TryAdd(key, callingMethod);
+                return;
             }
 
+            var callingMethod = new StackFrame(1).GetMethod();
+            SeoRedirect(controller, stripQueryStrings, null, callingMethod, key);
+        }
+
+        private static void SeoRedirect(Controller controller, QueryStringBehavior stripQueryStrings, string[] additionalPreservedKeys, MethodBase callingMethod, ulong key)
+        {
+            var cachedMethod = new CachedMethod
+            {
+                Action = callingMethod.Name,
+                Controller = callingMethod.DeclaringType.Name.Remove(callingMethod.DeclaringType.Name.Length - "Controller".Length),
+                IsIndex = callingMethod.Name == "Index"
+            };
+
+            if (stripQueryStrings == QueryStringBehavior.KeepActionParameters)
+            {
+                //Optimization: if no explicitly preserved query strings and no action parameters, avoid creating HashSet and strip all
+                if ((additionalPreservedKeys == null || additionalPreservedKeys.Length == 0) && callingMethod.GetParameters().Length == 0)
+                {
+                    //This won't actually persist anywhere because it's only set once during the reflection phase and not included in the cache entry
+                    //we're relying on checking if HashSet == null in DetermineSeoRedirect
+#if DEBUG
+                    //I'd leave it in here and rely on the compiler to strip it out, but...
+                    stripQueryStrings = QueryStringBehavior.StripAll;
+#endif
+                }
+                else
+                {
+                    int i = 0;
+                    bool skippedId = false;
+                    bool routeHasId = controller.RouteData.Values.ContainsKey("id");
+                    bool requestHasId = HttpContext.Current.Request.QueryString.Keys.Cast<string>().Any(queryKey => queryKey == "id");
+                    cachedMethod.PreservedParameters = new string[(callingMethod.GetParameters().Length + (additionalPreservedKeys?.Length ?? 0))];
+                    foreach (var preserved in callingMethod.GetParameters())
+                    {
+                        //Optimization: remove the 'id' parameter if it's determined by the route, potentially saving on HashSet lookup entirely
+                        if (!skippedId && routeHasId && !requestHasId && preserved.Name == "id")
+                        {
+                            //The parameter id is part of the route and not obtained via query string parameters
+                            if (cachedMethod.PreservedParameters.Length == 1)
+                            {
+                                //Bypass everything, no need for parameter preservation
+                                //This won't actually persist anywhere because it's only set once during the reflection phase and not included in the cache entry
+                                //we're relying on checking if HashSet == null in DetermineSeoRedirect
+#if DEBUG
+                                //I'd leave it in here and rely on the compiler to strip it out, but...
+                                stripQueryStrings = QueryStringBehavior.StripAll;
+#endif
+                                cachedMethod.PreservedParameters = null;
+                                break;
+                            }
+
+                            skippedId = true;
+                            var newPreserved = new string[cachedMethod.PreservedParameters.Length - 1];
+                            Array.Copy(cachedMethod.PreservedParameters, 0, newPreserved, 0, i);
+                            cachedMethod.PreservedParameters = newPreserved;
+                            continue;
+                        }
+                        cachedMethod.PreservedParameters[i++] = preserved.Name;
+                    }
+                    if (additionalPreservedKeys != null)
+                    {
+                        foreach (var preserved in additionalPreservedKeys)
+                        {
+                            cachedMethod.PreservedParameters[i++] = preserved;
+                        }
+                    }
+
+                    if (cachedMethod.PreservedParameters != null && cachedMethod.PreservedParameters.Length > 1)
+                    {
+                        Array.Sort(cachedMethod.PreservedParameters);
+                    }
+                }
+            }
+
+            MethodCache.TryAdd(key, cachedMethod);
+
             string destination;
-            if (DetermineSeoRedirect(controller, callingMethod, stripQueryStrings, out destination))
+            if (DetermineSeoRedirect(controller, cachedMethod, stripQueryStrings, out destination))
             {
                 controller.Response.RedirectPermanent(destination);
             }
