@@ -30,6 +30,54 @@ namespace NeoSmart.Web
 
         private static readonly ConcurrentDictionary<ulong, CachedMethod> MethodCache = new ConcurrentDictionary<ulong, CachedMethod>();
 
+        public static void RobotsTag(this Controller controller, string value, string botName = null)
+        {
+            controller.Response.AddHeader("X-Robots-Tag", string.Format("{0}{1}{2}", botName ?? string.Empty, botName != null ? ": " : string.Empty, value));
+        }
+
+        public static void NoIndex(this Controller controller, string botName = null)
+        {
+            RobotsTag(controller, "noindex", botName);
+        }
+
+        public static void NoFollow(this Controller controller, string botName = null)
+        {
+            RobotsTag(controller, "nofollow", botName);
+        }
+
+        public static void NoIndexNoFollow(this Controller controller, string botName = null)
+        {
+            RobotsTag(controller, "noindex, nofollow", botName);
+        }
+
+        public static void NoArchive(this Controller controller, string botName = null)
+        {
+            RobotsTag(controller, "noarchive", botName);
+        }
+
+        public static void NoSnippet(this Controller controller, string botName = null)
+        {
+            RobotsTag(controller, "nosnippet", botName);
+        }
+
+        public static void NoTranslate(this Controller controller, string botName = null)
+        {
+            RobotsTag(controller, "notranslate", botName);
+        }
+
+        public static void NoImageIndex(this Controller controller, string botName = null)
+        {
+            RobotsTag(controller, "noimageindex", botName);
+        }
+
+        public static void UnavailableAfter(this Controller controller, DateTime max, string botName = null)
+        {
+            //Google can't make up its mind. First it asks for RFC 850 then in an example it uses something else!
+            //https://developers.google.com/webmasters/control-crawl-index/docs/robots_meta_tag
+            //The globally-accepted "web standard" http format is RFC1123. https://www.hackcraft.net/web/datetime/#rfc850
+            RobotsTag(controller, $"unavailable_after: {max:R}", botName);
+        }
+
         public static void SeoRedirect(this Controller controller, string[] alsoPreserveQueryStringKeys, [CallerFilePath] string filePath = "", [CallerLineNumber] int lineNumber = 0)
         {
             var key = CityHash.CityHash.CityHash64(filePath, (ulong)lineNumber);
