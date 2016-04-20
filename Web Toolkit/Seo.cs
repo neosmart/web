@@ -189,6 +189,7 @@ namespace NeoSmart.Web
             string destination;
             if (DetermineSeoRedirect(controller, cachedMethod, stripQueryStrings, out destination))
             {
+                controller.Response.Headers.Add("X-Redirect-Reason", "NeoSmart SEO Rule");
                 controller.Response.RedirectPermanent(destination);
             }
         }
