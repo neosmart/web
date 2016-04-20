@@ -194,6 +194,23 @@ namespace NeoSmart.Web
             }
         }
 
+        private static string MakeLegalQueryString(Controller controller, CachedMethod method, QueryStringBehavior stripQueryStrings)
+        {
+            if (method.PreservedParameters != null)
+            {
+                var sb = new StringBuilder();
+
+                int i = 0;
+                foreach (var preserved in method.PreservedParameters.Intersect(controller.Request.QueryString.AllKeys))
+                {
+                    sb.AppendFormat($"{(i++ == 0 ? '?' : '&')}{HttpUtility.UrlEncode(preserved)}={HttpUtility.UrlEncode(controller.Request.Params.Get(preserved))}");
+                }
+                return sb.ToString();
+            }
+
+            return string.Empty;
+        }
+
         private static bool DetermineSeoRedirect(Controller controller, CachedMethod method, QueryStringBehavior stripQueryStrings, out string destination)
         {
             bool redirect = false;
