@@ -270,7 +270,6 @@ namespace NeoSmart.Web
                         qsBuilder.AppendFormat("{0}{1}{2}{3}", i == 0 ? '?' : '&', key,
                             string.IsNullOrEmpty(value) ? "" : "=",
                             string.IsNullOrEmpty(value) ? "" : HttpUtility.UrlEncode(value));
-
                         ++i;
                     }
 
@@ -278,6 +277,11 @@ namespace NeoSmart.Web
                     {
                         destination += qsBuilder.ToString();
                     }
+                }
+                else
+                {
+                    //Keep query string parameters as-is
+                    destination += HttpContext.Current.Request.Url.Query;
                 }
             }
             else //QueryStringBehavior.KeepAll
