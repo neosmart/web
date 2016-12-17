@@ -16,6 +16,15 @@ namespace NeoSmart.Web
 			SafeWait = true;
 		}
 
+		public ScopedMutex(bool initiallyOwned, string name)
+			: this(name)
+		{
+			if (initiallyOwned)
+			{
+				WaitOne();
+			}
+		}
+
 		public bool WaitOne()
 		{
 			try
