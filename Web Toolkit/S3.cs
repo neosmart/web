@@ -1,7 +1,7 @@
 using System;
 using System.Text;
 using System.Security.Cryptography;
-using Amazon.Util;
+using NeoSmart.ExtensionMethods;
 
 namespace NeoSmart.Web
 {
@@ -30,7 +30,7 @@ namespace NeoSmart.Web
 
         public static string GetExpiringLink(string bucket, string objectName, TimeSpan expires, S3LinkType linkType = S3LinkType.Subdomain, bool secure = false)
         {
-            string filename = System.IO.Path.GetFileName(objectName);
+            var filename = System.IO.Path.GetFileName(objectName);
             filename = filename.Replace("%20", " ");
             filename = filename.Replace("+", " ");
 
@@ -42,28 +42,28 @@ namespace NeoSmart.Web
             string s3Url;
             if (linkType == S3LinkType.Subfolder)
             {
-                s3Url = string.Format("http{0}://s3.amazonaws.com/{1}", secure ? "s" : "", bucket);
+                s3Url = $"http{(secure ? "s" : "")}://s3.amazonaws.com/{bucket}";
             }
             else
             {
-                s3Url = string.Format("http{0}://{1}{2}", secure ? "s" : "", bucket, linkType == S3LinkType.Cname ? "" : ".s3.amazonaws.com");
+                s3Url = $"http{(secure ? "s" : "")}://{bucket}{(linkType == S3LinkType.Cname ? "" : ".s3.amazonaws.com")}";
             }
 
-            Int64 expiresTime = ((Int64)expires.TotalSeconds) + (Int64)AWSSDKUtils.ConvertToUnixEpochMilliSeconds(DateTime.UtcNow);
+            Int64 expiresTime = ((Int64) expires.TotalSeconds) + (Int64) DateTime.UtcNow.ToUnixTimeSeconds();
             string bucketName = "/" + bucket;
             string options = string.Format("response-content-disposition=attachment; filename=\"{0}\"", filename);
 
             string toSign = string.Format("GET\n\n\n{0}\n{1}{2}?{3}", expiresTime, bucketName, objectName, options);
 
-            var signed = new HMACSHA1(Encoding.UTF8.GetBytes(_password)).ComputeHash(Encoding.UTF8.GetBytes(toSign));
-            string encoded = Uri.EscapeDataString(Convert.ToBase64String(signed));
+            using (var sha1 = new HMACSHA1(Encoding.UTF8.GetBytes(_password)))
+            {
+                var signed = sha1.ComputeHash(Encoding.UTF8.GetBytes(toSign));
+                var encoded = Uri.EscapeDataString(Convert.ToBase64String(signed));
 
-            options = options.Replace(" ", "%20");
-            
-            string url = string.Format("{0}{1}{2}?AWSAccessKeyId={3}&Expires={4}&Signature={5}&{6}",
-                s3Url, string.Empty, objectName, _username, expiresTime, encoded, options);
+                options = options.Replace(" ", "%20");
 
-            return url;
+                return $"{s3Url}{string.Empty}{objectName}?AWSAccessKeyId={_username}&Expires={expiresTime}&Signature={encoded}&{options}";
+            }
         }
     }
 }

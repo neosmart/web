@@ -5,8 +5,9 @@ using System.IO;
 using System.Text;
 using System.Security.Cryptography;
 using System.Xml;
-using Amazon.Util;
-using NServiceKit.Text;
+using NeoSmart.ExtensionMethods;
+using Newtonsoft.Json;
+using Formatting = Newtonsoft.Json.Formatting;
 
 namespace NeoSmart.Web
 {
@@ -63,7 +64,7 @@ namespace NeoSmart.Web
 
             Int64 maxAgeSeconds = maxAge == null ? 1209600 : (Int64) maxAge.Value.TotalSeconds;
 
-            var expiresEpoch = AWSSDKUtils.ConvertToUnixEpochSeconds(expiresTime);
+            var expiresEpoch = (Int64) expiresTime.ToUnixTimeSeconds();
             string contentDisposition = Uri.EscapeDataString(string.Format("attachment; filename=\"{0}\"", filename)).Replace(" ", "%20");
             string cacheControl = Uri.EscapeDataString(string.Format("max-age={0}", maxAgeSeconds)).Replace(" ", "%20");
             string baseUrl = string.Format("http{0}://{1}{2}?response-content-disposition={3}&response-cache-control={4}", secure ? "s" : "", domainName, objectName, contentDisposition, cacheControl);
@@ -86,13 +87,11 @@ namespace NeoSmart.Web
                 }
             };
 
-            string policyString = policy.ToJson().Replace("AWS_", "AWS:");
-            string encodedPolicy = ToUrlSafeBase64String(Encoding.ASCII.GetBytes(policyString));
-            string encodedSignature = ToUrlSafeBase64String(GetSignature(policyString));
+            var policyString = JsonConvert.SerializeObject(policy).Replace("AWS_", "AWS:");
+            var encodedPolicy = ToUrlSafeBase64String(Encoding.ASCII.GetBytes(policyString));
+            var encodedSignature = ToUrlSafeBase64String(GetSignature(policyString));
 
-            string url = string.Format("{0}&Policy={1}&Signature={2}&Key-Pair-Id={3}", baseUrl, encodedPolicy, encodedSignature, _keyPairId);
-
-            return url;
+            return $"{baseUrl}&Policy={encodedPolicy}&Signature={encodedSignature}&Key-Pair-Id={_keyPairId}";
         }
     }
 }
