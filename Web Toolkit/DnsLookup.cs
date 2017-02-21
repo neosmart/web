@@ -44,7 +44,13 @@ namespace NeoSmart.Web
         public static bool GetIpAddresses(string domain, out IPAddress[] addresses, int timeout = 60*1000)
         {
             var tokenSource = new CancellationTokenSource(timeout);
-            var task = DnsClient.Default.ResolveAsync(DomainName.Parse(domain), token: tokenSource.Token);
+            if (!DomainName.TryParse(domain, out var parsedDomain))
+            {
+                addresses = null;
+                return false;
+            }
+
+            var task = DnsClient.Default.ResolveAsync(parsedDomain, token: tokenSource.Token);
 
             try
             {
