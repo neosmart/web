@@ -22,9 +22,10 @@ namespace NeoSmart.Web
         private static readonly Regex TldRegex = new Regex(@"\.(ru|cn|info|tk)$", RegexOptions.Compiled);
         private static readonly Regex DomainPrefixRegex = new Regex(@"^(spam|example|nospam|junk|none|test|sample)", RegexOptions.Compiled);
         private static readonly Regex PrefixRegex = new Regex(@"^(abuse|nospam|spam|junk|noone|none|nobody|no1|test|example|sample|thanks|nothank|noway)", RegexOptions.Compiled);
-        private static readonly Regex WordFilterRegex = new Regex(@"fuck|bitch|bastard|spam|junk|\*", RegexOptions.Compiled);
-        private static readonly Regex QwertyRegex = new Regex(@"^[asdfghjkl]+$", RegexOptions.Compiled);
-        private static readonly Regex QwertyDomainRegex = new Regex(@"^[asdfghjkl]+\.[^.]+$", RegexOptions.Compiled);
+        private static readonly Regex WordFilterRegex = new Regex(@"fuck|bitch|bastard|spam|junk|name|suck|fake|\*", RegexOptions.Compiled);
+        private static readonly Regex QwertyRegex = new Regex(@"^[asdfghjkvlx]+$", RegexOptions.Compiled);
+        private static readonly Regex QwertyDomainRegex = new Regex(@"^[asdfghjkvlx]+\.[^.]+$", RegexOptions.Compiled);
+		private static readonly Regex RepeatedCharsRegex = new Regex(@"^(.)(\.|\1|@)+(\.com)?$", RegexOptions.Compiled);
 
         static private readonly HashSet<string> ValidDomainCache = new HashSet<string>();
         static private HashSet<IPAddress> BlockedMxAddresses = new HashSet<IPAddress>();
@@ -76,6 +77,12 @@ namespace NeoSmart.Web
                 ReverseDnsCompleteEvent.Set();
             })).Start();
         }
+
+		//aka IsDefinitelyFakeEmail
+		static public bool IsFakeEmail(string email)
+		{
+			return IsProbablyFakeEmail(email, 0, true);
+		}
 
         static public bool IsProbablyFakeEmail(string email, int meanness, bool validateMx = false)
         {
@@ -134,6 +141,14 @@ namespace NeoSmart.Web
                     return true;
                 }
             }
+			if (meanness >= 4)
+			{
+				if (RepeatedCharsRegex.IsMatch(mailAddress.User) || 
+					RepeatedCharsRegex.IsMatch(mailAddress.Host))
+				{
+					return true;
+				}
+			}
             if (meanness >= 5)
             {
                 if (NumericEmailRegex.IsMatch(mailAddress.User))
