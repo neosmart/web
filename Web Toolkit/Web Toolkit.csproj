@@ -35,6 +35,12 @@
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="ARSoft.Tools.Net, Version=2.2.7.0, Culture=neutral, PublicKeyToken=1940454cd762ec57, processorArchitecture=MSIL">
+      <HintPath>..\packages\ARSoft.Tools.Net.2.2.7\lib\net45\ARSoft.Tools.Net.dll</HintPath>
+    </Reference>
+    <Reference Include="BouncyCastle.Crypto, Version=1.8.1.0, Culture=neutral, PublicKeyToken=0e99375e54769942">
+      <HintPath>..\packages\BouncyCastle.1.8.1\lib\BouncyCastle.Crypto.dll</HintPath>
+    </Reference>
     <Reference Include="CityHash, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\..\easyre-web\packages\CityHash.Net.1.0.1\lib\net45\CityHash.dll</HintPath>
       <Private>True</Private>
