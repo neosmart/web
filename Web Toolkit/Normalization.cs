@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Text;
 using System.Collections.Generic;
 using System.Threading;
+using System.Text.RegularExpressions;
 
 namespace NeoSmart.Web
 {
@@ -168,7 +169,8 @@ namespace NeoSmart.Web
             return textInfo.ToTitleCase(stringToFormat.ToLower());
         }
 
-        static public string[] SplitName(string name)
+        static private Regex SaluationRegex = new Regex(@"(^[M|D]rs?\.? ?)|\b(jr|sr|[xiv]+|m\.?d\.?|d\.?d\.?s\.?)\b|,.*$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        static public string[] SplitName(string name, bool removeSalutations = false)
         {
             if (string.IsNullOrWhiteSpace(name))
             {
@@ -176,6 +178,7 @@ namespace NeoSmart.Web
             }
 
             name = name.Trim();
+            name = removeSalutations ? SaluationRegex.Replace(name, "") : name;
             int lastSpace = name.LastIndexOf(' ');
             string[] results = new string[2];
 
@@ -183,6 +186,16 @@ namespace NeoSmart.Web
             results[1] = lastSpace > 0 ? name.Substring(lastSpace + 1) : String.Empty;
 
             return results;
+        }
+
+        static private Regex RepeatedWhitespaceRegex = new Regex(@"\s{2,}", RegexOptions.Compiled);
+        static public string CleanupName(string name, bool removeSalutations  = false)
+        {
+            name = removeSalutations ? SaluationRegex.Replace(name, "") : name;
+            name = RepeatedWhitespaceRegex.Replace(name, " ");
+            name = name.Trim(new[] { ' ', '\t', ',', '.' });
+
+            return name;
         }
     }
 }
