@@ -17,15 +17,14 @@ namespace NeoSmart.Web
                                      @"(?(\[)(\[(\d{1,3}\.){3}\d{1,3}\])|(([0-9a-z][-\w]*[0-9a-z]*\.)+[a-z0-9]{2,17}))$",
                                      RegexOptions.Compiled, TimeSpan.FromMilliseconds(250));
         private static readonly Regex NumericEmailRegex = new Regex(@"^[0-9]+$", RegexOptions.Compiled);
-        private static readonly Regex NumericDomainRegex = new Regex(@"[0-9]+\.[^.]+$", RegexOptions.Compiled);
+        private static readonly Regex NumericDomainRegex = new Regex(@"^[0-9]+\.[^.]+$", RegexOptions.Compiled);
         private static readonly Regex MistypedTldRegex = new Regex(@"\.(cm|cmo|om|comm)$", RegexOptions.Compiled);
         private static readonly Regex TldRegex = new Regex(@"\.(ru|cn|info|tk)$", RegexOptions.Compiled);
-        private static readonly Regex DomainPrefixRegex = new Regex(@"^(spam|example|nospam|junk|none|test|sample)", RegexOptions.Compiled);
-        private static readonly Regex PrefixRegex = new Regex(@"^(abuse|nospam|spam|junk|noone|none|nobody|no1|test|example|sample|thanks|nothank|noway)", RegexOptions.Compiled);
-        private static readonly Regex WordFilterRegex = new Regex(@"fuck|bitch|bastard|spam|junk|name|suck|fake|\*", RegexOptions.Compiled);
+        private static readonly Regex ExpressionRegex = new Regex(@"\*|^a+b+c+|address|bastard|bitch|blabla|d+e+f+g+|example|fake|fuck|junk|junk|(a|no|some)name" + 
+            "|no1|nobody|none|noone|nope|nothank|noway|qwerty|sample|spam|suck|test|thanks|whatever|^x+y+z+", RegexOptions.Compiled);
         private static readonly Regex QwertyRegex = new Regex(@"^[asdfghjkvlx]+$", RegexOptions.Compiled);
         private static readonly Regex QwertyDomainRegex = new Regex(@"^[asdfghjkvlx]+\.[^.]+$", RegexOptions.Compiled);
-		private static readonly Regex RepeatedCharsRegex = new Regex(@"^(.)(\.|\1|@)+(\.com)?$", RegexOptions.Compiled);
+		private static readonly Regex RepeatedCharsRegex = new Regex(@"(.)(:?\1){3,}|^(.)\3+$?$", RegexOptions.Compiled);
 
         static private readonly HashSet<string> ValidDomainCache = new HashSet<string>();
         static private HashSet<IPAddress> BlockedMxAddresses = new HashSet<IPAddress>();
@@ -132,11 +131,7 @@ namespace NeoSmart.Web
             }
             if (meanness >= 2)
             {
-                if (PrefixRegex.IsMatch(mailAddress.User))
-                {
-                    return true;
-                }
-                if (DomainPrefixRegex.IsMatch(mailAddress.Host))
+                if (ExpressionRegex.IsMatch(mailAddress.User))
                 {
                     return true;
                 }
@@ -155,7 +150,7 @@ namespace NeoSmart.Web
                 {
                     return true;
                 }
-                if (WordFilterRegex.IsMatch(email))
+                if (ExpressionRegex.IsMatch(email))
                 {
                     return true;
                 }
