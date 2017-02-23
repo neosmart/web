@@ -45,10 +45,10 @@ namespace NeoSmart.Web
                 {
                     try
                     {
-                        var results = DnsLookup.GetMXRecords(domain, out bool found, 5000);
+                        var results = DnsLookup.GetMXRecords(domain, out bool found);
                         foreach (var result in results)
                         {
-                            DnsLookup.GetIpAddresses(result, out var addresses, 5000);
+                            DnsLookup.GetIpAddresses(result, out var addresses);
 
                             if (addresses == null)
                             {
@@ -198,7 +198,7 @@ namespace NeoSmart.Web
                 if (!ValidDomainCache.Contains(mailAddress.Host))
                 {
                     bool mxFound;
-                    var mxRecords = DnsLookup.GetMXRecords(mailAddress.Host, out mxFound, 5000);
+                    var mxRecords = DnsLookup.GetMXRecords(mailAddress.Host, out mxFound);
                     if (!mxFound || !mxRecords.Any())
                     {
                         //no MX record associated with this address or timeout
@@ -208,7 +208,7 @@ namespace NeoSmart.Web
                     //compare against blacklist
                     foreach (var record in mxRecords)
                     {
-                        DnsLookup.GetIpAddresses(record, out var addresses, 5000);
+                        DnsLookup.GetIpAddresses(record, out var addresses);
                         if (addresses != null && addresses.Any(BlockedMxAddresses.Contains))
                         {
                             //this mx record points to the same IP as a blacklisted MX record or timeout

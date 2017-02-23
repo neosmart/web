@@ -14,63 +14,40 @@ namespace NeoSmart.Web
 {
     static public class DnsLookup
     {
+        private static DnsClient _dnsClient = new DnsClient(IPAddress.Parse("8.8.8.8"), 5000);
         private static string[] BlankResult = new string[] { };
-        public static IEnumerable<string> GetMXRecords(string domain, out bool found, int timeout = 60*1000)
+
+        public static IEnumerable<string> GetMXRecords(string domain, out bool found)
         {
-            var tokenSource = new CancellationTokenSource(timeout);
-            var task = DnsClient.Default.ResolveAsync(DomainName.Parse(domain), RecordType.Mx, token: tokenSource.Token);
-            try
-            {
-                task.Wait();
-            }
-            catch (AggregateException)
-            {
-                //timeout
-                found = false;
-                return BlankResult;
-            }
-
-            if (task.Result == null)
+            var result = _dnsClient.Resolve(DomainName.Parse(domain), RecordType.Mx);
+            if (result?.AnswerRecords == null)
             {
                 found = false;
                 return BlankResult;
             }
 
-            var records = task.Result.AnswerRecords.OfType<MxRecord>();
+            var records = result.AnswerRecords.OfType<MxRecord>();
             found = records.Any();
             return records.Select(r => r.ExchangeDomainName.ToString());
         }
 
-        public static bool GetIpAddresses(string domain, out IPAddress[] addresses, int timeout = 60*1000)
+        public static bool GetIpAddresses(string domain, out IPAddress[] addresses)
         {
-            var tokenSource = new CancellationTokenSource(timeout);
             if (!DomainName.TryParse(domain, out var parsedDomain))
             {
                 addresses = null;
                 return false;
             }
 
-            var task = DnsClient.Default.ResolveAsync(parsedDomain, token: tokenSource.Token);
-
-            try
-            {
-                task.Wait();
-            }
-            catch (AggregateException)
-            {
-                //timeout
-                addresses = null;
-                return false;
-            }
-
-            if (task.Result == null)
+            var result = _dnsClient.Resolve(parsedDomain);
+            if (result?.AnswerRecords == null)
             {
                 addresses = null;
                 return false;
             }
 
             //Debug.Assert(task.IsCompleted);
-            var records = task.Result.AnswerRecords.OfType<ARecord>();
+            var records = result.AnswerRecords.OfType<ARecord>();
             if (!records.Any())
             {
                 addresses = null;
