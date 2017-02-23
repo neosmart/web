@@ -169,6 +169,13 @@ namespace NeoSmart.Web
             return textInfo.ToTitleCase(stringToFormat.ToLower());
         }
 
+        static private Regex RepeatedWhitespaceRegex = new Regex(@"\s{2,}", RegexOptions.Compiled);
+        static private string TrimName(string name)
+        {
+            name = RepeatedWhitespaceRegex.Replace(name, " ");
+            return name.Trim(new[] { ' ', '\t', ',', '.' });
+        }
+
         static private Regex SaluationRegex = new Regex(@"(^[M|D]rs?\.? ?)|\b(jr|sr|[xiv]+|m\.?d\.?|d\.?d\.?s\.?)\b|,.*$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
         static public string[] SplitName(string name, bool removeSalutations = false)
         {
@@ -177,23 +184,26 @@ namespace NeoSmart.Web
                 name = string.Empty;
             }
 
-            name = name.Trim();
+            name = TrimName(name);
             name = removeSalutations ? SaluationRegex.Replace(name, "") : name;
             int lastSpace = name.LastIndexOf(' ');
             string[] results = new string[2];
 
-            results[0] = lastSpace > 0 ? name.Substring(0, lastSpace) : name;
-            results[1] = lastSpace > 0 ? name.Substring(lastSpace + 1) : String.Empty;
+            results[0] = TrimName(lastSpace > 0 ? name.Substring(0, lastSpace) : name);
+            results[1] = TrimName(lastSpace > 0 ? name.Substring(lastSpace + 1) : String.Empty);
 
             return results;
         }
 
-        static private Regex RepeatedWhitespaceRegex = new Regex(@"\s{2,}", RegexOptions.Compiled);
         static public string CleanupName(string name, bool removeSalutations  = false)
         {
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                name = string.Empty;
+            }
+
             name = removeSalutations ? SaluationRegex.Replace(name, "") : name;
-            name = RepeatedWhitespaceRegex.Replace(name, " ");
-            name = name.Trim(new[] { ' ', '\t', ',', '.' });
+            name = TrimName(name);
 
             return name;
         }
