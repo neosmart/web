@@ -177,6 +177,13 @@ namespace NeoSmart.Web
                     return true;
                 }
             }
+            if (meanness >= 9)
+            {
+                if (mailAddress.User.Length < 3)
+                {
+                    return true;
+                }
+            }
             if (meanness >= 10)
             {
                 if (TldRegex.IsMatch(mailAddress.Host))
