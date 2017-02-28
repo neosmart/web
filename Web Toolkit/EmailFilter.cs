@@ -20,9 +20,9 @@ namespace NeoSmart.Web
         private static readonly Regex NumericDomainRegex = new Regex(@"^[0-9]+\.[^.]+$", RegexOptions.Compiled);
         private static readonly Regex MistypedTldRegex = new Regex(@"\.(cm|cmo|om|comm)$", RegexOptions.Compiled);
         private static readonly Regex TldRegex = new Regex(@"\.(ru|cn|info|tk)$", RegexOptions.Compiled);
-        private static readonly Regex ExpressionRegex = new Regex(@"\*|^a+b+c+|address|bastard|bitch|blabla|d+e+f+g+|example|fake|fuck|junk|junk|(a|no|some)name" + 
-            "|no1|nobody|none|noone|nope|nothank|noway|qwerty|sample|spam|suck|test|thanks|whatever|^x+y+z+", RegexOptions.Compiled);
-        private static readonly Regex QwertyRegex = new Regex(@"^[asdfghjkvlx]+$", RegexOptions.Compiled);
+        private static readonly Regex ExpressionRegex = new Regex(@"\*|^a+b+c+|address|bastard|bitch|blabla|d+e+f+g+|example|fake|fuck|junk|junk|^lol$| (a|no|some)name" + 
+            "|no1|nobody|none|noone|nope|nothank|noway|qwerty|sample|spam|suck|test|thanks|^user$|whatever|^x+y+z+", RegexOptions.Compiled);
+        private static readonly Regex QwertyRegex = new Regex(@"^[asdfghjkvlxm]+$", RegexOptions.Compiled);
         private static readonly Regex QwertyDomainRegex = new Regex(@"^[asdfghjkvlx]+\.[^.]+$", RegexOptions.Compiled);
 		private static readonly Regex RepeatedCharsRegex = new Regex(@"(.)(:?\1){3,}|^(.)\3+$?$", RegexOptions.Compiled);
 
@@ -172,14 +172,23 @@ namespace NeoSmart.Web
             }
             if (meanness >= 7)
             {
-                if (mailAddress.Host.Length < 3)
+                //this is including the tld, so 3 is insanely generous
+                //2 letters + period + 3 tld = 6
+                if (mailAddress.Host.Length < 6)
+                {
+                    return true;
+                }
+            }
+            if (meanness >= 8)
+            {
+                if (mailAddress.User.Length < 3)
                 {
                     return true;
                 }
             }
             if (meanness >= 9)
             {
-                if (mailAddress.User.Length < 3)
+                if (mailAddress.User.Length < 5)
                 {
                     return true;
                 }
@@ -723,6 +732,7 @@ namespace NeoSmart.Web
                 "willselfdestruct.com",
                 "winemaven.info",
                 "wuzupmail.net",
+                "www.com",
                 "yaho.com",
                 "yahoo.com.ph",
                 "yahoo.com.vn",
