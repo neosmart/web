@@ -192,6 +192,12 @@ namespace NeoSmart.Web
             results[0] = TrimName(lastSpace > 0 ? name.Substring(0, lastSpace) : name);
             results[1] = TrimName(lastSpace > 0 ? name.Substring(lastSpace + 1) : String.Empty);
 
+            //People sometimes type in "FirstName LastName" in the first name field, then "LastName" in the last name field
+            if (results[0].Length > results[1].Length && results[0].EndsWith(results[1]))
+            {
+                results[0] = results[0].Substring(0, results[0].Length - results[1].Length).Trim();
+            }
+
             return results;
         }
 
