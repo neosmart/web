@@ -177,7 +177,7 @@ namespace NeoSmart.Web
         }
 
         static private Regex SaluationRegex = new Regex(@"(^[M|D]rs?\.? ?)|\b(jr|sr|[xiv]+|m\.?d\.?|d\.?d\.?s\.?)\b|,.*$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-        static public string[] SplitName(string name, bool removeSalutations = false)
+        static public (string FirstName, string LastName) SplitName(string name, bool removeSalutations = false)
         {
             if (string.IsNullOrWhiteSpace(name))
             {
@@ -192,13 +192,14 @@ namespace NeoSmart.Web
             results[0] = TrimName(lastSpace > 0 ? name.Substring(0, lastSpace) : name);
             results[1] = TrimName(lastSpace > 0 ? name.Substring(lastSpace + 1) : String.Empty);
 
+
             //People sometimes type in "FirstName LastName" in the first name field, then "LastName" in the last name field
             if (results[0].Length > results[1].Length && results[0].EndsWith(results[1]))
             {
                 results[0] = results[0].Substring(0, results[0].Length - results[1].Length).Trim();
             }
 
-            return results;
+            return (results[0], results[1]);
         }
 
         static public string CleanupName(string name, bool removeSalutations  = false)
