@@ -105,6 +105,7 @@
     <Compile Include="Utils.cs" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="NameValueCollectionExtensions.cs" />
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>

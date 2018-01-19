@@ -24,8 +24,7 @@ namespace NeoSmart.Web
 
         public static HttpCookie SafeLookup(this HttpCookieCollection dictionary, string key, HttpCookie ifNotFound = default(HttpCookie))
         {
-            HttpCookie value;
-            return dictionary.TryGetValue(key, out value) ? value : ifNotFound;
+            return dictionary.TryGetValue(key, out var value) ? value : ifNotFound;
         }
     }
 }
