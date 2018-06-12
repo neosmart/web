@@ -169,11 +169,12 @@ namespace NeoSmart.Web
             return textInfo.ToTitleCase(stringToFormat.ToLower());
         }
 
+        static private char[] TrimChars = new [] { ' ', '\t', '\v', ',', '.', ';' };
         static private Regex RepeatedWhitespaceRegex = new Regex(@"\s{2,}", RegexOptions.Compiled);
         static private string TrimName(string name)
         {
             name = RepeatedWhitespaceRegex.Replace(name, " ");
-            return name.Trim(new[] { ' ', '\t', ',', '.' });
+            return name.Trim(TrimChars);
         }
 
         static private Regex SaluationRegex = new Regex(@"(^[M|D]rs?\.? ?)|\b(jr|sr|[xiv]+|m\.?d\.?|d\.?d\.?s\.?)\b|,.*$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
@@ -187,31 +188,31 @@ namespace NeoSmart.Web
             name = TrimName(name);
             name = removeSalutations ? SaluationRegex.Replace(name, "") : name;
             int lastSpace = name.LastIndexOf(' ');
-            string[] results = new string[2];
 
-            results[0] = TrimName(lastSpace > 0 ? name.Substring(0, lastSpace) : name);
-            results[1] = TrimName(lastSpace > 0 ? name.Substring(lastSpace + 1) : String.Empty);
+            var firstName = TrimName(lastSpace > 0 ? name.Substring(0, lastSpace) : name);
+            var lastName = TrimName(lastSpace > 0 ? name.Substring(lastSpace + 1) : String.Empty);
 
-
-            //People sometimes type in "FirstName LastName" in the first name field, then "LastName" in the last name field
-            if (results[0].Length > results[1].Length && results[0].EndsWith(results[1]))
-            {
-                results[0] = results[0].Substring(0, results[0].Length - results[1].Length).Trim();
-            }
-
-            return (results[0], results[1]);
+            return (firstName, lastName);
         }
 
-        static public string CleanupName(string name, bool removeSalutations  = false)
+        static public (string FirstName, string LastName) SanitizeName(string first, string last)
         {
-            if (string.IsNullOrWhiteSpace(name))
+            first = ProperNameCase(RemoveSalutation(first));
+            last = ProperNameCase(RemoveSalutation(last));
+
+            //We have too many users that put "First Last" as first name and "Last" as last name
+            string match = $" {last.ToLowerInvariant()}";
+            if (first.ToLowerInvariant().EndsWith(match))
             {
-                name = string.Empty;
+                first = first.Substring(0, first.Length - match.Length).TrimEnd();
             }
 
-            name = removeSalutations ? SaluationRegex.Replace(name, "") : name;
-            name = TrimName(name);
+            return (TrimName(first), TrimName(last));
+        }
 
+        static public string RemoveSalutation(string name)
+        {
+            name = SaluationRegex.Replace(name, "");
             return name;
         }
     }
