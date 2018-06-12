@@ -23,6 +23,7 @@ namespace NeoSmart.Web
     {
         public static string[] PreservedQueryStrings = new string[]
         {
+            "gclid",
             "utm_campaign",
             "utm_content",
             "utm_medium",
