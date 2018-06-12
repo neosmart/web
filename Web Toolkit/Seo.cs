@@ -21,6 +21,16 @@ namespace NeoSmart.Web
 
     static public class Seo
     {
+        public static string[] PreservedQueryStrings = new string[]
+        {
+            "utm_campaign",
+            "utm_content",
+            "utm_medium",
+            "utm_nooverride",
+            "utm_source",
+            "utm_term",
+        };
+
         public enum QueryStringBehavior
         {
             StripAll,
@@ -78,8 +88,13 @@ namespace NeoSmart.Web
             RobotsTag(controller, $"unavailable_after: {max:R}", botName);
         }
 
-        public static void SeoRedirect(this Controller controller, string[] alsoPreserveQueryStringKeys, [CallerFilePath] string filePath = "", [CallerLineNumber] int lineNumber = 0)
+        public static void SeoRedirect(this Controller controller, string[] alsoPreserveQueryStringKeys = null, [CallerFilePath] string filePath = "", [CallerLineNumber] int lineNumber = 0)
         {
+            if (alsoPreserveQueryStringKeys == null)
+            {
+                alsoPreserveQueryStringKeys = PreservedQueryStrings;
+            }
+
             var key = CityHash.CityHash.CityHash64(filePath, (ulong)lineNumber);
             CachedMethod cachedMethod;
             if (MethodCache.TryGetValue(key, out cachedMethod))
@@ -96,7 +111,7 @@ namespace NeoSmart.Web
             SeoRedirect(controller, QueryStringBehavior.KeepActionParameters, alsoPreserveQueryStringKeys, callingMethod, key);
         }
 
-        public static void SeoRedirect(this Controller controller, QueryStringBehavior stripQueryStrings = QueryStringBehavior.KeepActionParameters, [CallerFilePath] string filePath = "", [CallerLineNumber] int lineNumber = 0)
+        public static void SeoRedirect(this Controller controller, QueryStringBehavior stripQueryStrings, [CallerFilePath] string filePath = "", [CallerLineNumber] int lineNumber = 0)
         {
             var key = CityHash.CityHash.CityHash64(filePath, (ulong)lineNumber);
             CachedMethod cachedMethod;
