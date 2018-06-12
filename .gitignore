@@ -54,3 +54,4 @@ Thumbs.db
 
 packages/*
 .nuget/nuget.exe
+.vs
