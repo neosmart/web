@@ -1,4 +1,5 @@
-﻿using System;
+using Microsoft.AspNetCore.Http;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -35,7 +36,7 @@ namespace NeoSmart.Web
             set { _maxCards = value; }
         }
 
-        public static bool ValidatePurchase(HttpRequestBase request, string cardFingerprint, bool throwException = true)
+        public static bool ValidatePurchase(HttpRequest request, string cardFingerprint, bool throwException = true)
         {
             if (string.IsNullOrWhiteSpace(cardFingerprint))
             {

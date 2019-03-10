@@ -3,7 +3,7 @@ using System.Xml.Linq;
 
 namespace NeoSmart.Web
 {
-	public static class Bitly
+    public static class Bitly
 	{
 	    private static string _apiKey;
 	    private static string _login;
@@ -17,12 +17,12 @@ namespace NeoSmart.Web
 		public static BitlyResult ShortenUrl (string longUrl)
 		{
 			var url = string.Format(
-				"http://api.bit.ly/shorten?format=xml&version=2.0.1&longUrl={0}&login={1}&apiKey={2}", 
-				System.Uri.EscapeUriString(longUrl), 
-				_login, 
+				"http://api.bit.ly/shorten?format=xml&version=2.0.1&longUrl={0}&login={1}&apiKey={2}",
+				System.Uri.EscapeUriString(longUrl),
+				_login,
 				_apiKey
 				);
-		
+
 			var resultXml = XDocument.Load(url);
 			var x = (from result in resultXml.Descendants("nodeKeyVal")
 			         select new BitlyResult

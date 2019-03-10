@@ -1,13 +1,14 @@
-﻿using System;
+using Microsoft.AspNetCore.Http;
+using System;
 using System.Web;
 
 namespace NeoSmart.Web
 {
     static public class EasyCache
     {
-        static public void Cache(this HttpResponseBase response, TimeSpan expiresIn)
+#if false
+        static public void Cache(this HttpResponse response, TimeSpan expiresIn)
         {
-            response.Cache.SetOmitVaryStar(true);
             response.Cache.SetExpires(DateTime.UtcNow + expiresIn);
             response.Cache.SetCacheability(HttpCacheability.Public);
         }
@@ -18,5 +19,6 @@ namespace NeoSmart.Web
             response.Cache.SetExpires(DateTime.MinValue);
             response.Cache.SetCacheability(HttpCacheability.NoCache);
         }
+#endif
     }
 }

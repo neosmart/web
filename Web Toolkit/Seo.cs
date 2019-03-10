@@ -1,4 +1,8 @@
-﻿using System;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Extensions;
+using Microsoft.AspNetCore.Mvc;
+using NeoSmart.ExtensionMethods;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -6,19 +10,11 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
-using System.Web;
-using System.Web.Mvc;
+using System.Text.RegularExpressions;
+using HttpUtility = System.Web.HttpUtility;
 
 namespace NeoSmart.Web
 {
-    class CachedMethod
-    {
-        public string Controller;
-        public string Action;
-        public bool IsIndex;
-        public string[] PreservedParameters;
-    }
-
     static public class Seo
     {
         public static string[] PreservedQueryStrings = new string[]
@@ -43,7 +39,7 @@ namespace NeoSmart.Web
 
         public static void RobotsTag(this Controller controller, string value, string botName = null)
         {
-            controller.Response.AddHeader("X-Robots-Tag", string.Format("{0}{1}{2}", botName ?? string.Empty, botName != null ? ": " : string.Empty, value));
+            controller.Response.Headers.Add("X-Robots-Tag", string.Format("{0}{1}{2}", botName ?? string.Empty, botName != null ? ": " : string.Empty, value));
         }
 
         public static void NoIndex(this Controller controller, string botName = null)
@@ -89,55 +85,71 @@ namespace NeoSmart.Web
             RobotsTag(controller, $"unavailable_after: {max:R}", botName);
         }
 
-        public static void SeoRedirect(this Controller controller, string[] alsoPreserveQueryStringKeys = null, [CallerFilePath] string filePath = "", [CallerLineNumber] int lineNumber = 0)
+        public static void SeoRedirect(this Controller controller, HttpRequest request, string[] alsoPreserveQueryStringKeys = null, [CallerFilePath] string filePath = "", [CallerLineNumber] int lineNumber = 0)
         {
             if (alsoPreserveQueryStringKeys == null)
             {
                 alsoPreserveQueryStringKeys = PreservedQueryStrings;
             }
 
-            var key = CityHash.CityHash.CityHash64(filePath, (ulong)lineNumber);
-            CachedMethod cachedMethod;
-            if (MethodCache.TryGetValue(key, out cachedMethod))
+            var key = NeoSmart.Hashing.XXHash.XXHash64.Hash((ulong)lineNumber, filePath);
+            if (MethodCache.TryGetValue(key, out var cachedMethod))
             {
                 string destination;
-                if (DetermineSeoRedirect(controller, cachedMethod, QueryStringBehavior.KeepActionParameters, out destination))
+                if (DetermineSeoRedirect(controller, request, cachedMethod, QueryStringBehavior.KeepActionParameters, out destination))
                 {
-                    controller.Response.RedirectPermanent(destination);
+                    controller.Response.Redirect(destination, true);
                 }
                 return;
             }
 
             var callingMethod = new StackFrame(1).GetMethod();
-            SeoRedirect(controller, QueryStringBehavior.KeepActionParameters, alsoPreserveQueryStringKeys, callingMethod, key);
+            SeoRedirect(controller, request, QueryStringBehavior.KeepActionParameters, alsoPreserveQueryStringKeys, callingMethod, key);
         }
 
-        public static void SeoRedirect(this Controller controller, QueryStringBehavior stripQueryStrings, [CallerFilePath] string filePath = "", [CallerLineNumber] int lineNumber = 0)
+        public static void SeoRedirect(this Controller controller, HttpRequest request, QueryStringBehavior stripQueryStrings, [CallerFilePath] string filePath = "", [CallerLineNumber] int lineNumber = 0)
         {
-            var key = CityHash.CityHash.CityHash64(filePath, (ulong)lineNumber);
-            CachedMethod cachedMethod;
-            if (MethodCache.TryGetValue(key, out cachedMethod))
+            var key = NeoSmart.Hashing.XXHash.XXHash64.Hash((ulong)lineNumber, filePath);
+            if (MethodCache.TryGetValue(key, out var cachedMethod))
             {
                 string destination;
-                if (DetermineSeoRedirect(controller, cachedMethod, stripQueryStrings, out destination))
+                if (DetermineSeoRedirect(controller, request, cachedMethod, stripQueryStrings, out destination))
                 {
-                    controller.Response.RedirectPermanent(destination);
+                    controller.Response.Redirect(destination, true);
                 }
                 return;
             }
 
             var callingMethod = new StackFrame(1).GetMethod();
-            SeoRedirect(controller, stripQueryStrings, null, callingMethod, key);
+            SeoRedirect(controller, request, stripQueryStrings, null, callingMethod, key);
         }
 
-        private static void SeoRedirect(Controller controller, QueryStringBehavior stripQueryStrings, string[] additionalPreservedKeys, MethodBase callingMethod, ulong key)
+        class CachedMethod
+        {
+            public string Controller;
+            public string Action;
+            public bool IsIndex;
+            public string[] PreservedParameters;
+        }
+
+        private static Regex ActionRegex = new Regex(@"\<(.*)\>");
+        private static Regex ControllerRegex = new Regex(@"([^.]+)Controller");
+        private static void SeoRedirect(Controller controller, HttpRequest request, QueryStringBehavior stripQueryStrings, string[] additionalPreservedKeys, MethodBase callingMethod, ulong key)
         {
             var cachedMethod = new CachedMethod
             {
-                Action = callingMethod.Name,
-                Controller = callingMethod.DeclaringType.Name.Remove(callingMethod.DeclaringType.Name.Length - "Controller".Length),
+                Controller = ControllerRegex.Match(callingMethod.DeclaringType.FullName).Groups[1].Value,
                 IsIndex = callingMethod.Name == "Index"
             };
+
+            if (callingMethod.DeclaringType.FullName.Contains('<'))
+            {
+                cachedMethod.Action = ActionRegex.Match(callingMethod.DeclaringType.FullName).Groups[1].Value;
+            }
+            else
+            {
+                cachedMethod.Action = callingMethod.Name;
+            }
 
             if (stripQueryStrings == QueryStringBehavior.KeepActionParameters)
             {
@@ -156,7 +168,7 @@ namespace NeoSmart.Web
                     int i = 0;
                     bool skippedId = false;
                     bool routeHasId = controller.RouteData.Values.ContainsKey("id");
-                    bool requestHasId = HttpContext.Current.Request.QueryString.Keys.Cast<string>().Any(queryKey => queryKey == "id");
+                    bool requestHasId = request.Query.Keys.Cast<string>().Any(queryKey => queryKey == "id");
                     cachedMethod.PreservedParameters = new string[(callingMethod.GetParameters().Length + (additionalPreservedKeys?.Length ?? 0))];
                     foreach (var preserved in callingMethod.GetParameters())
                     {
@@ -203,23 +215,23 @@ namespace NeoSmart.Web
             MethodCache.TryAdd(key, cachedMethod);
 
             string destination;
-            if (DetermineSeoRedirect(controller, cachedMethod, stripQueryStrings, out destination))
+            if (DetermineSeoRedirect(controller, request, cachedMethod, stripQueryStrings, out destination))
             {
                 controller.Response.Headers.Add("X-Redirect-Reason", "NeoSmart SEO Rule");
-                controller.Response.RedirectPermanent(destination);
+                controller.Response.Redirect(destination, true);
             }
         }
 
-        private static string MakeLegalQueryString(Controller controller, CachedMethod method, QueryStringBehavior stripQueryStrings)
+        private static string MakeLegalQueryString(Controller controller, HttpRequest request, CachedMethod method, QueryStringBehavior stripQueryStrings)
         {
             if (method.PreservedParameters != null)
             {
                 var sb = new StringBuilder();
 
                 int i = 0;
-                foreach (var preserved in method.PreservedParameters.Intersect(controller.Request.QueryString.AllKeys))
+                foreach (var preserved in method.PreservedParameters.Intersect(controller.Request.Query.Keys))
                 {
-                    sb.AppendFormat($"{(i++ == 0 ? '?' : '&')}{HttpUtility.UrlEncode(preserved)}={HttpUtility.UrlEncode(controller.Request.Params.Get(preserved))}");
+                    sb.AppendFormat($"{(i++ == 0 ? '?' : '&')}{HttpUtility.UrlEncode(preserved)}={HttpUtility.UrlEncode(controller.Request.Query[preserved])}");
                 }
                 return sb.ToString();
             }
@@ -227,7 +239,7 @@ namespace NeoSmart.Web
             return string.Empty;
         }
 
-        private static bool DetermineSeoRedirect(Controller controller, CachedMethod method, QueryStringBehavior stripQueryStrings, out string destination)
+        private static bool DetermineSeoRedirect(Controller controller, HttpRequest request, CachedMethod method, QueryStringBehavior stripQueryStrings, out string destination)
         {
             bool redirect = false;
             string currentAction = (string)controller.RouteData.Values["action"];
@@ -235,7 +247,7 @@ namespace NeoSmart.Web
 
             //tentatively....
             //note: not using a string builder because the assumption is that most requests are correct
-            destination = HttpContext.Current.Request.Url.AbsolutePath;
+            destination = request.GetDisplayUrl();
 
             //Case-based redirect
             if (currentAction != method.Action)
@@ -269,19 +281,19 @@ namespace NeoSmart.Web
             //Query strings
             if (stripQueryStrings == QueryStringBehavior.StripAll || method.PreservedParameters == null)
             {
-                redirect = redirect || HttpContext.Current.Request.QueryString.Count > 0;
+                redirect = redirect || request.Query.Count > 0;
             }
             else if (stripQueryStrings == QueryStringBehavior.KeepActionParameters)
             {
-                if (HttpContext.Current.Request.QueryString.AllKeys.Any(k => Array.BinarySearch(method.PreservedParameters, k) < 0))
+                if (request.Query.Keys.Any(k => Array.BinarySearch(method.PreservedParameters, k) < 0))
                 {
                     redirect = true;
 
                     var i = 0;
                     StringBuilder qsBuilder = null;
-                    foreach (var key in HttpContext.Current.Request.QueryString.AllKeys.Where(k => Array.BinarySearch(method.PreservedParameters, k) >= 0))
+                    foreach (var key in request.Query.Keys.Where(k => Array.BinarySearch(method.PreservedParameters, k) >= 0))
                     {
-                        var value = HttpContext.Current.Request.QueryString[key];
+                        var value = request.Query[key];
                         qsBuilder = qsBuilder ?? new StringBuilder();
                         qsBuilder.AppendFormat("{0}{1}{2}{3}", i == 0 ? '?' : '&', key,
                             string.IsNullOrEmpty(value) ? "" : "=",
@@ -297,12 +309,12 @@ namespace NeoSmart.Web
                 else
                 {
                     //Keep query string parameters as-is
-                    destination += HttpContext.Current.Request.Url.Query;
+                    destination += request.QueryString;
                 }
             }
             else //QueryStringBehavior.KeepAll
             {
-                destination += HttpContext.Current.Request.Url.Query;
+                destination += request.QueryString;
             }
 
             return redirect;

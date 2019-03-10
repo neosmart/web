@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Threading;
 
 namespace NeoSmart.Web
@@ -9,17 +9,13 @@ namespace NeoSmart.Web
 		private bool _locked;
 		public bool SafeWait { get; set; }
 
-		public ScopedMutex(string name)
+		public ScopedMutex(string name, bool initiallyOwned = true)
 		{
-			_mutex = new Mutex(false, name);
-			_locked = false;
-			SafeWait = true;
-		}
+            _mutex = new Mutex(false, name); // false here to avoid possible AbandonedMutexException
+            _locked = false;
+            SafeWait = true;
 
-		public ScopedMutex(bool initiallyOwned, string name)
-			: this(name)
-		{
-			if (initiallyOwned)
+            if (initiallyOwned)
 			{
 				WaitOne();
 			}
@@ -45,13 +41,26 @@ namespace NeoSmart.Web
 
 		public void ReleaseMutex()
 		{
-			_mutex.ReleaseMutex();
+            if (_locked)
+            {
+                try
+                {
+                    _mutex.ReleaseMutex();
+                }
+                catch
+                {
+                    if (!SafeWait)
+                    {
+                        throw;
+                    }
+                }
+            }
 			_locked = false;
 		}
 
 		public void Dispose()
 		{
-			if(_locked)
+			if (_locked)
 			{
 				ReleaseMutex();
 			}

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -10,6 +10,7 @@ namespace NeoSmart.Web
 
     public static class HttpCookieCollectionExtensions
     {
+#if false
         public static bool TryGetValue(this HttpCookieCollection dictionary, string key, out HttpCookie value)
         {
             if (dictionary.AllKeys.Contains(key))
@@ -26,5 +27,6 @@ namespace NeoSmart.Web
         {
             return dictionary.TryGetValue(key, out var value) ? value : ifNotFound;
         }
+#endif
     }
 }

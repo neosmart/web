@@ -1,4 +1,5 @@
-﻿using NeoSmart.ExtensionMethods;
+using Microsoft.AspNetCore.Http;
+using NeoSmart.ExtensionMethods;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,34 +17,20 @@ namespace NeoSmart.Web
             ""
         };
 
-        public static bool ValidateReferer(string referer, bool nothrow = false)
+        public static bool ValidateReferer(string referer)
         {
             if (!ValidReferers.Contains(referer))
             {
-                if (nothrow)
-                {
-                    return false;
-                }
-                throw new InvalidRefererException(referer);
+                return false;
             }
 
             return true;
         }
 
-        public static bool ValidateReferer(this HttpRequestBase request, bool nothrow = false)
+        public static bool ValidateReferer(this HttpRequest request)
         {
-            return ValidateReferer(request.UrlReferrer?.Host, nothrow);
-        }
-    }
-
-    public class InvalidRefererException : HttpException
-    {
-        public readonly string Referer;
-
-        public InvalidRefererException(string referer)
-            : base(403, "Access to this resource is restricted!")
-        {
-            Referer = referer;
+            var referer = request.GetTypedHeaders().Referer;
+            return ValidateReferer(referer?.Host);
         }
     }
 }

@@ -1,4 +1,6 @@
-﻿using System;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -11,31 +13,39 @@ namespace NeoSmart.Web
 {
     public static class Utils
     {
-        //Adapted from Noah Heldman's work at http://stackoverflow.com/a/10407992/17027
-        public static bool GetClientIpAddress(HttpRequestBase request, out string remote)
+        public static bool GetClientIpAddress(HttpRequest request, out string remote)
         {
             try
             {
-                var userHostAddress = request.UserHostAddress;
+                remote = string.Empty;
+                _ = request.Headers.TryGetValue("HTTP_X_FORWARDED_FOR", out var xForwardedFor) ||
+                    request.Headers.TryGetValue("X_FORWARDED_FOR", out xForwardedFor) ||
+                    request.Headers.TryGetValue("HTTP-X-FORWARDED-FOR", out xForwardedFor) ||
+                    request.Headers.TryGetValue("X-FORWARDED-FOR", out xForwardedFor);
 
-                //Attempt to parse.  If it fails, we catch below and return "0.0.0.0"
-                //Could use TryParse instead, but I wanted to catch all exceptions
-                IPAddress.Parse(userHostAddress);
-
-                var xForwardedFor = request.ServerVariables.AllKeys.Contains("HTTP_X_FORWARDED_FOR") ? request.ServerVariables["HTTP_X_FORWARDED_FOR"] :
-                    request.ServerVariables.AllKeys.Contains("X_FORWARDED_FOR") ? request.ServerVariables["X_FORWARDED_FOR"] : "";
-
-                if (string.IsNullOrWhiteSpace(xForwardedFor))
+                if (xForwardedFor.Count > 0)
                 {
-                    remote = userHostAddress;
-                    return true;
+                    //Get a list of public ip addresses in the X_FORWARDED_FOR variable
+                    var publicForwardingIps = xForwardedFor.Where(ip => !IsPrivateIpAddress(ip)).ToList();
+
+                    //If we found any, return the last one, otherwise return the user host address
+                    if (publicForwardingIps.Any())
+                    {
+                        remote = publicForwardingIps.Last();
+                        return true;
+                    }
                 }
 
-                //Get a list of public ip addresses in the X_FORWARDED_FOR variable
-                var publicForwardingIps = xForwardedFor.Split(',').Where(ip => !IsPrivateIpAddress(ip)).ToList();
+                // Use provided remote address, if available
+                var connectionFeature = request.HttpContext.Features.Get<HttpConnectionFeature>();
+                var userHostAddress = connectionFeature?.RemoteIpAddress?.ToString() ?? "";
+                if (!IPAddress.TryParse(userHostAddress, out _))
+                {
+                    remote = "0.0.0.0";
+                    return false;
+                }
 
-                //If we found any, return the last one, otherwise return the user host address
-                remote = publicForwardingIps.Any() ? publicForwardingIps.Last() : userHostAddress;
+                remote = userHostAddress;
                 return true;
             }
             catch (Exception)
@@ -49,7 +59,7 @@ namespace NeoSmart.Web
         private static bool IsPrivateIpAddress(string ipAddress)
         {
             //http://en.wikipedia.org/wiki/Private_network
-            //Private IP Addresses are: 
+            //Private IP Addresses are:
             //  24-bit block: 10.0.0.0 through 10.255.255.255
             //  20-bit block: 172.16.0.0 through 172.31.255.255
             //  16-bit block: 192.168.0.0 through 192.168.255.255
@@ -63,7 +73,7 @@ namespace NeoSmart.Web
                     //Assume all IPv6 addresses are public-facing (no NATing)
                     return false;
                 }
-                
+
                 if (ip.AddressFamily != AddressFamily.InterNetwork)
                 {
                     //Unknown/malformed "IP" address, cant' be a web-facing IP
