@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -15,16 +15,16 @@ namespace NeoSmart.Web
     {
         private static readonly Regex EmailRegex = new Regex(@"^(?("")(""[^""]+?""@)|(([0-9a-z]((\.(?!\.))|[-!#\$%&'\*\+/=\?\^`\{\}\|~\w])*)(?<=[0-9a-z])@))" +
                                      @"(?(\[)(\[(\d{1,3}\.){3}\d{1,3}\])|(([0-9a-z][-\w]*[0-9a-z]*\.)+[a-z0-9]{2,17}))$",
-                                     RegexOptions.Compiled, TimeSpan.FromMilliseconds(250));
-        private static readonly Regex NumericEmailRegex = new Regex(@"^[0-9]+$", RegexOptions.Compiled);
-        private static readonly Regex NumericDomainRegex = new Regex(@"^[0-9]+\.[^.]+$", RegexOptions.Compiled);
-        private static readonly Regex MistypedTldRegex = new Regex(@"\.(cm|cmo|om|comm)$", RegexOptions.Compiled);
-        private static readonly Regex TldRegex = new Regex(@"\.(ru|cn|info|tk)$", RegexOptions.Compiled);
-        private static readonly Regex ExpressionRegex = new Regex(@"\*|^a+b+c+|address|bastard|bitch|blabla|d+e+f+g+|example|fake|fuck|junk|junk|^lol$| (a|no|some)name" + 
-            "|no1|nobody|none|noone|nope|nothank|noway|qwerty|sample|spam|suck|test|thanks|^user$|whatever|^x+y+z+", RegexOptions.Compiled);
-        private static readonly Regex QwertyRegex = new Regex(@"^[asdfghjkvlxm]+$", RegexOptions.Compiled);
-        private static readonly Regex QwertyDomainRegex = new Regex(@"^[asdfghjkvlx]+\.[^.]+$", RegexOptions.Compiled);
-		private static readonly Regex RepeatedCharsRegex = new Regex(@"(.)(:?\1){3,}|^(.)\3+$?$", RegexOptions.Compiled);
+                                     RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex NumericEmailRegex = new Regex(@"^[0-9]+$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex NumericDomainRegex = new Regex(@"^[0-9]+\.[^.]+$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex MistypedTldRegex = new Regex(@"\.(cm|cmo|om|comm)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex TldRegex = new Regex(@"\.(ru|cn|info|tk)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex ExpressionRegex = new Regex(@"\*|^a+b+c+|address|bastard|bitch|blabla|d+e+f+g+|example|fake|fuck|junk|junk|^lol$| (a|no|some)name" +
+            "|no1|nobody|none|noone|nope|nothank|noway|qwerty|sample|spam|suck|test|thanks|^user$|whatever|^x+y+z+", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex QwertyRegex = new Regex(@"^[asdfghjkvlxm]+$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex QwertyDomainRegex = new Regex(@"^[asdfghjkvlx]+\.[^.]+$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+		private static readonly Regex RepeatedCharsRegex = new Regex(@"(.)(:?\1){3,}|^(.)\3+$?$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         static private readonly HashSet<string> ValidDomainCache = new HashSet<string>();
         static private HashSet<IPAddress> BlockedMxAddresses = new HashSet<IPAddress>();
@@ -77,20 +77,65 @@ namespace NeoSmart.Web
             })).Start();
         }
 
-		//aka IsDefinitelyFakeEmail
+		// aka IsDefinitelyFakeEmail
 		static public bool IsFakeEmail(string email)
 		{
 			return IsProbablyFakeEmail(email, 0, true);
 		}
 
-        static public bool IsProbablyFakeEmail(string email, int meanness, bool validateMx = false)
+        static public bool HasValidMx(MailAddress address)
         {
-            if (validateMx && !ReverseDnsComplete)
+            if (!ReverseDnsComplete)
             {
                 ReverseDnsCompleteEvent.Wait();
                 ReverseDnsComplete = true;
             }
 
+            if (ValidDomainCache.Contains(address.Host))
+            {
+                return true;
+            }
+
+            var mxRecords = DnsLookup.GetMXRecords(address.Host, out bool mxFound);
+            if (!mxFound || !mxRecords.Any())
+            {
+                //no MX record associated with this address or timeout
+                return false;
+            }
+
+            // Compare against our blacklist
+            foreach (var record in mxRecords)
+            {
+                DnsLookup.GetIpAddresses(record, out var addresses);
+                if (addresses != null && addresses.Any(BlockedMxAddresses.Contains))
+                {
+                    //this mx record points to the same IP as a blacklisted MX record or timeout
+                    return false;
+                }
+            }
+
+            lock (ValidDomainCache)
+            {
+                ValidDomainCache.Add(address.Host);
+            }
+
+            return true;
+        }
+
+        static public bool HasValidMx(string email)
+        {
+            try
+            {
+                return HasValidMx(new MailAddress(email));
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        static public bool IsProbablyFakeEmail(string email, int meanness, bool validateMx = false)
+        {
             if (string.IsNullOrWhiteSpace(email))
             {
                 return true;
@@ -107,7 +152,7 @@ namespace NeoSmart.Web
 
             if (meanness >= 0)
             {
-                if (DomainMinimumPrefix.TryGetValue(mailAddress.Host, out var minimumPrefix) 
+                if (DomainMinimumPrefix.TryGetValue(mailAddress.Host, out var minimumPrefix)
                     && minimumPrefix >mailAddress.User.Length)
                 {
                     return true;
@@ -138,7 +183,7 @@ namespace NeoSmart.Web
             }
 			if (meanness >= 4)
 			{
-				if (RepeatedCharsRegex.IsMatch(mailAddress.User) || 
+				if (RepeatedCharsRegex.IsMatch(mailAddress.User) ||
 					RepeatedCharsRegex.IsMatch(mailAddress.Host))
 				{
 					return true;
@@ -202,34 +247,9 @@ namespace NeoSmart.Web
             }
 
             //Do this last because it's the most expensive
-            if (validateMx)
+            if (validateMx && !HasValidMx(mailAddress))
             {
-                if (!ValidDomainCache.Contains(mailAddress.Host))
-                {
-                    bool mxFound;
-                    var mxRecords = DnsLookup.GetMXRecords(mailAddress.Host, out mxFound);
-                    if (!mxFound || !mxRecords.Any())
-                    {
-                        //no MX record associated with this address or timeout
-                        return true;
-                    }
-
-                    //compare against blacklist
-                    foreach (var record in mxRecords)
-                    {
-                        DnsLookup.GetIpAddresses(record, out var addresses);
-                        if (addresses != null && addresses.Any(BlockedMxAddresses.Contains))
-                        {
-                            //this mx record points to the same IP as a blacklisted MX record or timeout
-                            return true;
-                        }
-                    }
-
-                    lock (ValidDomainCache)
-                    {
-                        ValidDomainCache.Add(mailAddress.Host);
-                    }
-                }
+                return true;
             }
 
             return false;
@@ -248,7 +268,7 @@ namespace NeoSmart.Web
             {
                 email = Regex.Replace(email, @"(@)(.+)$", match =>
                 {
-                    //use IdnMapping class to convert Unicode domain names. 
+                    //use IdnMapping class to convert Unicode domain names.
                     var idn = new IdnMapping();
 
                     string domainName = match.Groups[2].Value;
@@ -274,7 +294,7 @@ namespace NeoSmart.Web
                 return false;
             }
 
-            //return true if input is in valid e-mail format. 
+            //return true if input is in valid e-mail format.
             try
             {
                 return EmailRegex.IsMatch(email);
