@@ -5,66 +5,40 @@ namespace NeoSmart.Web
 {
 	public class ScopedMutex : IDisposable
 	{
-		private readonly Mutex _mutex;
+		private readonly EventWaitHandle _mutex;
 		private bool _locked;
+        private bool _disposed = false;
 		public bool SafeWait { get; set; }
 
-		public ScopedMutex(string name, bool initiallyOwned = true)
+		public ScopedMutex(string name)
 		{
-            _mutex = new Mutex(false, name); // false here to avoid possible AbandonedMutexException
-            _locked = false;
+            //_mutex = new Semaphore(1, 1, name); // false here to avoid possible AbandonedMutexException
+            _mutex = new EventWaitHandle(true, EventResetMode.AutoReset, name);
+            _locked = true;
             SafeWait = true;
-
-            if (initiallyOwned)
-			{
-				WaitOne();
-			}
 		}
 
 		public bool WaitOne()
 		{
-			try
-			{
-				_locked = true; //Regardless of AbandonedMutexException
-				_mutex.WaitOne();
-			}
-			catch (AbandonedMutexException)
-			{
-				if (!SafeWait)
-				{
-					throw;
-				}
-			}
+            _mutex.WaitOne();
 
 			return true;
 		}
 
 		public void ReleaseMutex()
 		{
-            if (_locked)
-            {
-                try
-                {
-                    _mutex.ReleaseMutex();
-                }
-                catch
-                {
-                    if (!SafeWait)
-                    {
-                        throw;
-                    }
-                }
-            }
-			_locked = false;
-		}
+                _mutex.Set();
+                _locked = false;
+        }
 
-		public void Dispose()
-		{
-			if (_locked)
-			{
-				ReleaseMutex();
-			}
-			_mutex.Dispose();
+        public void Dispose()
+        {
+            if (!_disposed)
+            {
+                _mutex.Set();
+                _disposed = true;
+                _mutex.Dispose();
+            }
 		}
 	}
 }
