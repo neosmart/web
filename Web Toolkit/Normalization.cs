@@ -166,7 +166,7 @@ namespace NeoSmart.Web
 
             //From http://msdn.microsoft.com/en-us/library/system.globalization.textinfo.totitlecase.aspx:
             //"However, this method does not currently provide proper casing to convert a word that is entirely uppercase, such as an acronym."
-            return textInfo.ToTitleCase(stringToFormat.ToLower());
+            return textInfo.ToTitleCase(stringToFormat.ToLower().Trim());
         }
 
         static private char[] TrimChars = new [] { ' ', '\t', '\v', ',', '.', ';' };
