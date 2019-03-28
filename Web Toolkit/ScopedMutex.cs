@@ -1,44 +1,89 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace NeoSmart.Web
 {
-	public class ScopedMutex : IDisposable
-	{
-		private readonly EventWaitHandle _mutex;
-		private bool _locked;
-        private bool _disposed = false;
-		public bool SafeWait { get; set; }
+    public struct ScopedMutex : IDisposable
+    {
+        class CountedMutex
+        {
+            public SemaphoreSlim Mutex;
+            public int Count;
+        }
 
-		public ScopedMutex(string name)
-		{
-            //_mutex = new Semaphore(1, 1, name); // false here to avoid possible AbandonedMutexException
-            _mutex = new EventWaitHandle(true, EventResetMode.AutoReset, name);
-            _locked = true;
-            SafeWait = true;
-		}
+        static Dictionary<string, CountedMutex> MutexMap = new Dictionary<string, CountedMutex>();
+        private readonly CountedMutex _mutex;
+        private readonly string _name;
+        private bool _owned;
 
-		public bool WaitOne()
-		{
-            _mutex.WaitOne();
+        private ScopedMutex(string name, CountedMutex mutex, bool owned)
+        {
+            _name = name;
+            _mutex = mutex;
+            _owned = owned;
+        }
 
-			return true;
-		}
+        public static async Task<ScopedMutex> CreateAsync(string name)
+        {
+            bool owned = false;
+            CountedMutex mutex = null;
+            lock (MutexMap)
+            {
+                if (MutexMap.TryGetValue(name, out mutex))
+                {
+                    mutex.Count++;
+                }
+                else
+                {
+                    mutex = new CountedMutex()
+                    {
+                        Count = 1,
+                        Mutex = new SemaphoreSlim(0, 1),
+                    };
+                    MutexMap.Add(name, mutex);
+                    owned = true;
+                }
+            }
 
-		public void ReleaseMutex()
-		{
-                _mutex.Set();
-                _locked = false;
+            var result = new ScopedMutex(name, mutex, owned);
+            if (!owned)
+            {
+                await result.WaitOne();
+            }
+            return result;
+        }
+
+        public async Task WaitOne()
+        {
+            if (!_owned)
+            {
+                await _mutex.Mutex.WaitAsync();
+                _owned = true;
+            }
+        }
+
+        public void ReleaseMutex()
+        {
+            if (_owned)
+            {
+                _mutex.Mutex.Release();
+                _owned = false;
+            }
         }
 
         public void Dispose()
         {
-            if (!_disposed)
+            ReleaseMutex();
+            lock (MutexMap)
             {
-                _mutex.Set();
-                _disposed = true;
-                _mutex.Dispose();
+                if (--_mutex.Count == 0)
+                {
+                    _mutex.Mutex.Dispose();
+                    MutexMap.Remove(_name);
+                }
             }
-		}
-	}
+        }
+    }
 }
