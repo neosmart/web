@@ -13,6 +13,23 @@ namespace NeoSmart.Web
 {
     public class EmailFilter
     {
+        public enum BlockReason
+        {
+            /// The format of the email address did not conform to that of a public email account.
+            /// (This isn't the same as what is technically allowed.)
+            InvalidFormat,
+            /// The MX domain could not be resolved or resolved to an invalid value.
+            InvalidMx,
+            /// The email fell afoul of one or more statically defined checks, such as known typo
+            /// domains or user portion not consistent with domain mail server's published rules,
+            /// such as minimum length or allowed characters.
+            StaticRules,
+            /// Either the domain itself is blacklisted or its MX resolved to a blacklisted value
+            Blacklisted,
+            /// The user/domain combination tripped one or more heuristic filters that indicate a
+            /// (high) probability of being a fake email.
+            Heuristic
+        }
         private static readonly Regex EmailRegex = new Regex(@"^(?("")(""[^""]+?""@)|(([0-9a-z]((\.(?!\.))|[-!#\$%&'\*\+/=\?\^`\{\}\|~\w])*)(?<=[0-9a-z])@))" +
                                      @"(?(\[)(\[(\d{1,3}\.){3}\d{1,3}\])|(([0-9a-z][-\w]*[0-9a-z]*\.)+[a-z0-9]{2,17}))$",
                                      RegexOptions.Compiled | RegexOptions.IgnoreCase);
