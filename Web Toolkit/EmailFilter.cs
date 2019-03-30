@@ -153,7 +153,7 @@ namespace NeoSmart.Web
             if (meanness >= 0)
             {
                 if (DomainMinimumPrefix.TryGetValue(mailAddress.Host, out var minimumPrefix)
-                    && minimumPrefix >mailAddress.User.Length)
+                    && minimumPrefix > mailAddress.User.Length)
                 {
                     return true;
                 }
@@ -313,11 +313,12 @@ namespace NeoSmart.Web
 
         private readonly static HashSet<string> MxBlackList = new HashSet<string>(new[]
         {
-            "mvrht.com", //10minutemail.com
+            "mvrht.com", // 10minutemail.com
             "mailinator.com",
-            "sharklasers.com", //guerrillamail.com
-            "teleworm.us", //fakemailgenerator.com
-            "hmamail.com", //hidemyass email
+            "sharklasers.com", // guerrillamail.com
+            "teleworm.us", // fakemailgenerator.com
+            "hmamail.com", // hidemyass email
+            "generator.email", // primary web address and mx record for many different domains
         });
 
         private readonly static SortedSet<string> MistypedDomains = new SortedSet<string>()
