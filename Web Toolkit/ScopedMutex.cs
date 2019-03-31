@@ -5,83 +5,82 @@ using System.Threading.Tasks;
 
 namespace NeoSmart.Web
 {
-    public struct ScopedMutex : IDisposable
+    public readonly struct ScopedMutex : IDisposable
     {
         class CountedMutex
         {
             public SemaphoreSlim Mutex;
-            public int Count;
+            public int RefCount;
         }
 
         static Dictionary<string, CountedMutex> MutexMap = new Dictionary<string, CountedMutex>();
         private readonly CountedMutex _mutex;
         private readonly string _name;
-        private bool _owned;
 
         private ScopedMutex(string name, CountedMutex mutex, bool owned)
         {
             _name = name;
             _mutex = mutex;
-            _owned = owned;
         }
 
-        public static async Task<ScopedMutex> CreateAsync(string name)
+        public static async Task<IDisposable> CreateAsync(string name)
         {
-            bool owned = false;
-            CountedMutex mutex = null;
+            bool owned;
+            CountedMutex mutex;
+
             lock (MutexMap)
             {
                 if (MutexMap.TryGetValue(name, out mutex))
                 {
-                    mutex.Count++;
+                    owned = false;
+                    mutex.RefCount++;
                 }
                 else
                 {
+                    owned = true;
                     mutex = new CountedMutex()
                     {
-                        Count = 1,
+                        RefCount = 1,
                         Mutex = new SemaphoreSlim(0, 1),
                     };
                     MutexMap.Add(name, mutex);
-                    owned = true;
                 }
             }
 
             var result = new ScopedMutex(name, mutex, owned);
             if (!owned)
             {
-                await result.WaitOne();
+                await result.WaitOneAsync();
             }
             return result;
         }
 
-        public async Task WaitOne()
+        private Task WaitOneAsync()
         {
-            if (!_owned)
-            {
-                await _mutex.Mutex.WaitAsync();
-                _owned = true;
-            }
+            return _mutex.Mutex.WaitAsync();
         }
 
-        public void ReleaseMutex()
+        private void Release()
         {
-            if (_owned)
-            {
-                _mutex.Mutex.Release();
-                _owned = false;
-            }
+            _mutex.Mutex.Release();
         }
 
         public void Dispose()
         {
-            ReleaseMutex();
+            Release();
             lock (MutexMap)
             {
-                if (--_mutex.Count == 0)
+                if (--_mutex.RefCount == 0)
                 {
                     _mutex.Mutex.Dispose();
-                    MutexMap.Remove(_name);
+                    if (MutexMap.ContainsKey(_name))
+                    {
+                        MutexMap.Remove(_name);
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debugger.Break();
+                    }
                 }
             }
         }
