@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -13,6 +14,8 @@ namespace NeoSmart.Web
 {
     public class EmailFilter
     {
+        public static ILogger<EmailFilter> Logger;
+
         public enum BlockReason
         {
             /// The format of the email address did not conform to that of a public email account.
@@ -43,7 +46,6 @@ namespace NeoSmart.Web
         private static readonly Regex QwertyDomainRegex = new Regex(@"^[asdfghjkvlx]+\.[^.]+$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 		private static readonly Regex RepeatedCharsRegex = new Regex(@"(.)(:?\1){3,}|^(.)\3+$?$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
-        static private readonly HashSet<string> ValidDomainCache = new HashSet<string>();
         static private HashSet<IPAddress> BlockedMxAddresses = new HashSet<IPAddress>();
         static private ManualResetEventSlim ReverseDnsCompleteEvent = new ManualResetEventSlim(false);
         static private bool ReverseDnsComplete = false;
@@ -116,7 +118,8 @@ namespace NeoSmart.Web
             var mxRecords = DnsLookup.GetMXRecords(address.Host, out bool mxFound);
             if (!mxFound || !mxRecords.Any())
             {
-                //no MX record associated with this address or timeout
+                // No MX record associated with this address or timeout
+                Logger.LogInformation("Could not find MX record for domain {MailDomain}", address.Host);
                 return false;
             }
 
@@ -126,7 +129,9 @@ namespace NeoSmart.Web
                 DnsLookup.GetIpAddresses(record, out var addresses);
                 if (addresses != null && addresses.Any(BlockedMxAddresses.Contains))
                 {
-                    //this mx record points to the same IP as a blacklisted MX record or timeout
+                    // This mx record points to the same IP as a blacklisted MX record or timeout
+                    Logger.LogInformation("Email domain {MailDomain} has MX record {MxRecord} in blacklist!",
+                        address.Host, record);
                     return false;
                 }
             }
@@ -145,9 +150,11 @@ namespace NeoSmart.Web
             {
                 return HasValidMx(new MailAddress(email));
             }
-            catch
+            catch (Exception ex)
             {
-                return false;
+                Logger.LogError(ex, "Error checking domain MX records");
+                // Err on the side of caution
+                return true;
             }
         }
 
@@ -322,7 +329,19 @@ namespace NeoSmart.Web
             }
         }
 
-        //domains that have hard rules as to the length of the prefix (prefix@domain)
+        // These domains will never fail an MX check
+        static private readonly HashSet<string> ValidDomainCache = new HashSet<string>()
+        {
+            "gmail.com",
+            "googlemail.com",
+            "hotmail.com",
+            "msn.com",
+            "outlook.com",
+            "yahoo.com",
+            "aol.com",
+        };
+
+        // Domains that have hard rules as to the length of the prefix (prefix@domain)
         private readonly static Dictionary<string, int> DomainMinimumPrefix = new Dictionary<string, int>()
         {
             { "gmail.com", 6 },

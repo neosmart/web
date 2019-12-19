@@ -136,20 +136,15 @@ namespace NeoSmart.Web
         private static Regex ControllerRegex = new Regex(@"([^.]+)Controller");
         private static void SeoRedirect(Controller controller, HttpRequest request, QueryStringBehavior stripQueryStrings, string[] additionalPreservedKeys, MethodBase callingMethod, ulong key)
         {
+            return;
             var cachedMethod = new CachedMethod
             {
                 Controller = ControllerRegex.Match(callingMethod.DeclaringType.FullName).Groups[1].Value,
                 IsIndex = callingMethod.Name == "Index"
             };
 
-            if (callingMethod.DeclaringType.FullName.Contains('<'))
-            {
-                cachedMethod.Action = ActionRegex.Match(callingMethod.DeclaringType.FullName).Groups[1].Value;
-            }
-            else
-            {
-                cachedMethod.Action = callingMethod.Name;
-            }
+            cachedMethod.Action = (string)controller.RouteData.Values["action"];
+            cachedMethod.Controller = (string)controller.RouteData.Values["controller"];
 
             if (stripQueryStrings == QueryStringBehavior.KeepActionParameters)
             {
@@ -239,15 +234,26 @@ namespace NeoSmart.Web
             return string.Empty;
         }
 
+        static char[] SplitChars = new[] { '/' };
+        private static (string controller, string action) ExtractRequestedRoute(string path)
+        {
+            var parts = path.Split(SplitChars, StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length == 1)
+            {
+                return (parts[0], "Index");
+            }
+            return (parts[0], parts[1]);
+        }
+
         private static bool DetermineSeoRedirect(Controller controller, HttpRequest request, CachedMethod method, QueryStringBehavior stripQueryStrings, out string destination)
         {
             bool redirect = false;
-            string currentAction = (string)controller.RouteData.Values["action"];
-            string currentController = (string)controller.RouteData.Values["controller"];
+
+            var (currentController, currentAction) = ExtractRequestedRoute(request.Path);
 
             //tentatively....
             //note: not using a string builder because the assumption is that most requests are correct
-            destination = request.GetDisplayUrl();
+            destination = request.Path;
 
             //Case-based redirect
             if (currentAction != method.Action)
@@ -264,11 +270,12 @@ namespace NeoSmart.Web
             }
 
             //Trailing-backslash configuration (this is the simplification of the NOT XNOR)
-            if ((method.IsIndex != destination.EndsWith("/")))
-            {
-                redirect = true;
-                destination = string.Format("{0}{1}", destination.TrimEnd('/'), method.IsIndex ? "/" : "");
-            }
+            //if ((method.IsIndex != destination.EndsWith("/")))
+            //{
+            //    // Preserve the old redirect value, i.e. only redirect if we're also redirecting for some other reason
+            //    // redirect = true;
+            //    destination = string.Format("{0}{1}", destination.TrimEnd('/'), method.IsIndex ? "/" : "");
+            //}
 
             //No Index in link
             if (method.IsIndex && destination.EndsWith("/Index/"))
@@ -279,42 +286,45 @@ namespace NeoSmart.Web
             }
 
             //Query strings
-            if (stripQueryStrings == QueryStringBehavior.StripAll || method.PreservedParameters == null)
+            if (request.QueryString.HasValue)
             {
-                redirect = redirect || request.Query.Count > 0;
-            }
-            else if (stripQueryStrings == QueryStringBehavior.KeepActionParameters)
-            {
-                if (request.Query.Keys.Any(k => Array.BinarySearch(method.PreservedParameters, k) < 0))
+                if (stripQueryStrings == QueryStringBehavior.StripAll || method.PreservedParameters == null)
                 {
-                    redirect = true;
-
-                    var i = 0;
-                    StringBuilder qsBuilder = null;
-                    foreach (var key in request.Query.Keys.Where(k => Array.BinarySearch(method.PreservedParameters, k) >= 0))
+                    redirect = redirect || request.Query.Count > 0;
+                }
+                else if (stripQueryStrings == QueryStringBehavior.KeepActionParameters)
+                {
+                    if (request.Query.Keys.Any(k => Array.BinarySearch(method.PreservedParameters, k) < 0))
                     {
-                        var value = request.Query[key];
-                        qsBuilder = qsBuilder ?? new StringBuilder();
-                        qsBuilder.AppendFormat("{0}{1}{2}{3}", i == 0 ? '?' : '&', key,
-                            string.IsNullOrEmpty(value) ? "" : "=",
-                            string.IsNullOrEmpty(value) ? "" : HttpUtility.UrlEncode(value));
-                        ++i;
+                        redirect = true;
+
+                        var i = 0;
+                        StringBuilder qsBuilder = null;
+                        foreach (var key in request.Query.Keys.Where(k => Array.BinarySearch(method.PreservedParameters, k) >= 0))
+                        {
+                            var value = request.Query[key];
+                            qsBuilder = qsBuilder ?? new StringBuilder();
+                            qsBuilder.AppendFormat("{0}{1}{2}{3}", i == 0 ? '?' : '&', key,
+                                string.IsNullOrEmpty(value) ? "" : "=",
+                                string.IsNullOrEmpty(value) ? "" : HttpUtility.UrlEncode(value));
+                            ++i;
+                        }
+
+                        if (qsBuilder != null)
+                        {
+                            destination += qsBuilder.ToString();
+                        }
                     }
-
-                    if (qsBuilder != null)
+                    else
                     {
-                        destination += qsBuilder.ToString();
+                        //Keep query string parameters as-is
+                        destination += request.QueryString;
                     }
                 }
-                else
+                else //QueryStringBehavior.KeepAll
                 {
-                    //Keep query string parameters as-is
                     destination += request.QueryString;
                 }
-            }
-            else //QueryStringBehavior.KeepAll
-            {
-                destination += request.QueryString;
             }
 
             return redirect;
