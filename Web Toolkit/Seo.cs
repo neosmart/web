@@ -135,7 +135,9 @@ namespace NeoSmart.Web
         private static Regex ControllerRegex = new Regex(@"([^.]+)Controller");
         private static void SeoRedirect(Controller controller, HttpRequest request, QueryStringBehavior stripQueryStrings, string[] additionalPreservedKeys, MethodBase callingMethod, ulong key)
         {
+#if NETSTANDARD20
             return;
+#endif
             var cachedMethod = new CachedMethod
             {
                 Controller = ControllerRegex.Match(callingMethod.DeclaringType.FullName).Groups[1].Value,
