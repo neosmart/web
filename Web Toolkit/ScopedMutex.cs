@@ -23,6 +23,38 @@ namespace NeoSmart.Web
             _mutex = mutex;
         }
 
+        public static IDisposable Create(string name)
+        {
+            bool owned;
+            CountedMutex mutex;
+
+            lock (MutexMap)
+            {
+                if (MutexMap.TryGetValue(name, out mutex))
+                {
+                    owned = false;
+                    mutex.RefCount++;
+                }
+                else
+                {
+                    owned = true;
+                    mutex = new CountedMutex()
+                    {
+                        RefCount = 1,
+                        Mutex = new SemaphoreSlim(0, 1),
+                    };
+                    MutexMap.Add(name, mutex);
+                }
+            }
+
+            var result = new ScopedMutex(name, mutex, owned);
+            if (!owned)
+            {
+                result.WaitOne();
+            }
+            return result;
+        }
+
         public static async Task<IDisposable> CreateAsync(string name)
         {
             bool owned;
@@ -53,6 +85,11 @@ namespace NeoSmart.Web
                 await result.WaitOneAsync();
             }
             return result;
+        }
+
+        private void WaitOne()
+        {
+            _mutex.Mutex.Wait();
         }
 
         private Task WaitOneAsync()

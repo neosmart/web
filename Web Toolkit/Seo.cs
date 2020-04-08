@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Mvc;
-using NeoSmart.ExtensionMethods;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
