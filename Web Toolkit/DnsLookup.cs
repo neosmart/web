@@ -1,4 +1,4 @@
-﻿using ARSoft.Tools.Net;
+using ARSoft.Tools.Net;
 using ARSoft.Tools.Net.Dns;
 using System;
 using System.Collections.Generic;

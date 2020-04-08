@@ -5,7 +5,6 @@ using System.IO;
 using System.Text;
 using System.Security.Cryptography;
 using System.Xml;
-using NeoSmart.ExtensionMethods;
 using Newtonsoft.Json;
 using Formatting = Newtonsoft.Json.Formatting;
 

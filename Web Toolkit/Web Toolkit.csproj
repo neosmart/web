@@ -33,8 +33,4 @@
     <PackageReference Include="xxHash.Core" Version="0.3.0" />
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\..\ExtensionMethods\ExtensionMethods\ExtensionMethods.csproj" />
-  </ItemGroup>
-
 </Project>
