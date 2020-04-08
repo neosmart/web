@@ -14,7 +14,14 @@ namespace NeoSmart.Web
 {
     static public class DnsLookup
     {
-        private static DnsClient _dnsClient = new DnsClient(IPAddress.Parse("8.8.8.8"), 5000);
+        private static IList<IPAddress> DnsServers = new[] {
+            "192.168.45.1",
+            "8.8.8.8",
+            "1.1.1.1",
+            "75.75.75.75",
+        }.Select(ip => IPAddress.Parse(ip)).ToList();
+
+        private static DnsClient _dnsClient = new DnsClient(DnsServers, 5000);
         private static string[] BlankResult = new string[] { };
 
         public static IEnumerable<string> GetMXRecords(string domain, out bool found)
