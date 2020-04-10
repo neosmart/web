@@ -15,7 +15,7 @@ namespace NeoSmart.Web
     static public class DnsLookup
     {
         private static IList<IPAddress> DnsServers = new[] {
-            "192.168.45.1",
+            //"192.168.45.1",
             "8.8.8.8",
             "1.1.1.1",
             "75.75.75.75",
