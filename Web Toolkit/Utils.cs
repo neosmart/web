@@ -121,17 +121,18 @@ namespace NeoSmart.Web
 
         public static string ByteToHex(byte[] bytes)
         {
-            var c = new char[bytes.Length << 1];
+            Span<char> c = stackalloc char[bytes.Length << 1];
 
+            byte b;
             for (int i = 0; i < bytes.Length; i++)
             {
-                byte b = ((byte)(bytes[i] >> 4));
+                b = ((byte)(bytes[i] >> 4));
                 c[i * 2] = (char)(b > 9 ? b + 0x37 : b + 0x30);
                 b = ((byte)(bytes[i] & 0xF));
                 c[i * 2 + 1] = (char)(b > 9 ? b + 0x37 : b + 0x30);
             }
 
-            return new string(c);
+            return c.ToString();
         }
     }
 }
