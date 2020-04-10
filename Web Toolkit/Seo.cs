@@ -38,7 +38,13 @@ namespace NeoSmart.Web
 
         public static void RobotsTag(this Controller controller, string value, string botName = null)
         {
-            controller.Response.Headers.Add("X-Robots-Tag", string.Format("{0}{1}{2}", botName ?? string.Empty, botName != null ? ": " : string.Empty, value));
+            //if (controller.Response.Headers.ContainsKey("X-Robots-Tag"))
+            //{
+            //    var old = controller.Response.Headers["X-Robots-Key"].ToString();
+            //    controller.Response.Headers.Remove("X-Robots-Key");
+            //    value = $"{old}, {value}";
+            //}
+            controller.Response.Headers.Append("X-Robots-Tag", string.Format("{0}{1}{2}", botName ?? string.Empty, botName != null ? ": " : string.Empty, value));
         }
 
         public static void NoIndex(this Controller controller, string botName = null)
