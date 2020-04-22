@@ -1,14 +1,8 @@
 using ARSoft.Tools.Net;
 using ARSoft.Tools.Net.Dns;
-using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Net;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace NeoSmart.Web
 {

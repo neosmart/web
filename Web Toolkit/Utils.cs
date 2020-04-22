@@ -11,7 +11,7 @@ using System.Web;
 
 namespace NeoSmart.Web
 {
-    public static class Utils
+    public static class IpUtils
     {
         public static bool GetClientIpAddress(HttpRequest request, out string remote)
         {
@@ -56,7 +56,7 @@ namespace NeoSmart.Web
             }
         }
 
-        private static bool IsPrivateIpAddress(string ipAddress)
+        public static bool IsPrivateIpAddress(string ipAddress)
         {
             //http://en.wikipedia.org/wiki/Private_network
             //Private IP Addresses are:
@@ -110,7 +110,7 @@ namespace NeoSmart.Web
                 sb.AppendFormat("{0}={1}&", Uri.EscapeDataString(kv.Key), Uri.EscapeDataString(kv.Value));
             }
 
-            //Trim trailing &
+            // Trim trailing &
             if (sb.Length > 0)
             {
                 sb.Remove(sb.Length - 1, 1);

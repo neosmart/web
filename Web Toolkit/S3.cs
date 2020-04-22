@@ -1,6 +1,7 @@
 using System;
 using System.Text;
 using System.Security.Cryptography;
+using NeoSmart.Web.DateTimeExtensions;
 
 namespace NeoSmart.Web
 {
@@ -48,7 +49,7 @@ namespace NeoSmart.Web
                 s3Url = $"http{(secure ? "s" : "")}://{bucket}{(linkType == S3LinkType.Cname ? "" : ".s3.amazonaws.com")}";
             }
 
-            Int64 expiresTime = ((Int64) expires.TotalSeconds) + (Int64) DateTime.UtcNow.ToUnixTimeSeconds();
+            long expiresTime = ((long)expires.TotalSeconds) + (long)DateTime.UtcNow.ToUnixTimeSeconds();
             string bucketName = "/" + bucket;
             string options = string.Format("response-content-disposition=attachment; filename=\"{0}\"", filename);
 

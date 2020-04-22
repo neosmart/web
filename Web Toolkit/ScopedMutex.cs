@@ -17,7 +17,7 @@ namespace NeoSmart.Web
         private readonly CountedMutex _mutex;
         private readonly string _name;
 
-        private ScopedMutex(string name, CountedMutex mutex, bool owned)
+        private ScopedMutex(string name, CountedMutex mutex)
         {
             _name = name;
             _mutex = mutex;
@@ -47,7 +47,7 @@ namespace NeoSmart.Web
                 }
             }
 
-            var result = new ScopedMutex(name, mutex, owned);
+            var result = new ScopedMutex(name, mutex);
             if (!owned)
             {
                 result.WaitOne();
@@ -79,7 +79,7 @@ namespace NeoSmart.Web
                 }
             }
 
-            var result = new ScopedMutex(name, mutex, owned);
+            var result = new ScopedMutex(name, mutex);
             if (!owned)
             {
                 await result.WaitOneAsync();

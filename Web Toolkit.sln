@@ -1,16 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.26206.0
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30001.183
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Web Toolkit", "Web Toolkit\Web Toolkit.csproj", "{F1E8E70A-B9B2-41FD-B435-1E23269B8C15}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{10502073-B2F4-4C5C-99C7-A82DADF4C258}"
-	ProjectSection(SolutionItems) = preProject
-		.nuget\NuGet.Config = .nuget\NuGet.Config
-		.nuget\NuGet.exe = .nuget\NuGet.exe
-		.nuget\NuGet.targets = .nuget\NuGet.targets
-	EndProjectSection
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Web Toolkit", "Web Toolkit\Web Toolkit.csproj", "{F1E8E70A-B9B2-41FD-B435-1E23269B8C15}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -22,12 +15,11 @@ Global
 		{F1E8E70A-B9B2-41FD-B435-1E23269B8C15}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F1E8E70A-B9B2-41FD-B435-1E23269B8C15}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F1E8E70A-B9B2-41FD-B435-1E23269B8C15}.Release|Any CPU.Build.0 = Release|Any CPU
-		{BBBF620E-A5CB-4DD7-9066-0C4787D904BD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{BBBF620E-A5CB-4DD7-9066-0C4787D904BD}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{BBBF620E-A5CB-4DD7-9066-0C4787D904BD}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{BBBF620E-A5CB-4DD7-9066-0C4787D904BD}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {EE224A42-D545-4407-A77D-F2EF12ADF389}
 	EndGlobalSection
 EndGlobal

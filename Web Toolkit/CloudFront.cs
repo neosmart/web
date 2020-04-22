@@ -1,21 +1,15 @@
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
-using System.Text;
 using System.Security.Cryptography;
 using System.Xml;
-using Newtonsoft.Json;
-using Formatting = Newtonsoft.Json.Formatting;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using NeoSmart.Utils;
 
 namespace NeoSmart.Web
 {
-    using System;
-    using System.Security.Cryptography;
-    using System.Xml;
-    using Newtonsoft.Json;
 
-        internal static class RSAKeyExtensions
+    internal static class RSAKeyExtensions
         {
             public static void FromXmlString(this RSA rsa, string xmlString)
             {
@@ -70,18 +64,22 @@ namespace NeoSmart.Web
         private static string _rsaXml;
         private static string _keyPairId;
 
+        private static readonly JsonSerializerOptions CamelCasedJsonOptions = new JsonSerializerOptions()
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        };
+
         public static void SetCredentials(string keyPairId, string rsaXml)
         {
             _rsaXml = rsaXml;
             _keyPairId = keyPairId;
         }
 
-
-        private static byte[] GetSignature(string toSign)
+        private static byte[] GetSignature(byte[] toSign)
         {
             using (var sha1 = new SHA1CryptoServiceProvider())
             {
-                var bytes = sha1.ComputeHash(Encoding.ASCII.GetBytes(toSign));
+                var bytes = sha1.ComputeHash(toSign);
                 using (var rsa = new RSACryptoServiceProvider())
                 {
                     RSAKeyExtensions.FromXmlString(rsa, _rsaXml);
@@ -90,14 +88,6 @@ namespace NeoSmart.Web
                     return formatter.CreateSignature(bytes);
                 }
             }
-        }
-
-        private static string ToUrlSafeBase64String(byte[] input)
-        {
-            return Convert.ToBase64String(input)
-                    .Replace('+', '-')
-                    .Replace('=', '_')
-                    .Replace('/', '~');
         }
 
         public static string GetExpiringLink(string domainName, string objectName, TimeSpan expires, TimeSpan? maxAge = null, bool secure = false)
@@ -116,12 +106,11 @@ namespace NeoSmart.Web
             objectName = objectName.Replace("%2F", "/");
             objectName = objectName.Replace("+", "%20");
 
-            Int64 maxAgeSeconds = maxAge == null ? 1209600 : (Int64) maxAge.Value.TotalSeconds;
+            long maxAgeSeconds = maxAge == null ? 1209600 : (long) maxAge.Value.TotalSeconds;
 
-            var expiresEpoch = (Int64) expiresTime.ToUnixTimeSeconds();
             string contentDisposition = Uri.EscapeDataString(string.Format("attachment; filename=\"{0}\"", filename)).Replace(" ", "%20");
             string cacheControl = Uri.EscapeDataString(string.Format("max-age={0}", maxAgeSeconds)).Replace(" ", "%20");
-            string baseUrl = string.Format("http{0}://{1}{2}?response-content-disposition={3}&response-cache-control={4}", secure ? "s" : "", domainName, objectName, contentDisposition, cacheControl);
+            string baseUrl = $"http{(secure ? "s" : "")}://{domainName}{objectName}?response-content-disposition={contentDisposition}&response-cache-control={cacheControl}";
 
             var policy = new
             {
@@ -132,20 +121,28 @@ namespace NeoSmart.Web
                         Resource = baseUrl,
                         Condition = new
                         {
-                            DateLessThan = new
-                            {
-                                AWS_EpochTime = expiresEpoch
-                            }
+                            DateLessThan = new AwsEpochTime(expiresTime),
                         }
                     }
                 }
             };
 
-            var policyString = JsonConvert.SerializeObject(policy).Replace("AWS_", "AWS:");
-            var encodedPolicy = ToUrlSafeBase64String(Encoding.ASCII.GetBytes(policyString));
-            var encodedSignature = ToUrlSafeBase64String(GetSignature(policyString));
+            var policyBytes = JsonSerializer.SerializeToUtf8Bytes(policy, CamelCasedJsonOptions);
+            var encodedPolicy = UrlBase64.Encode(policyBytes);
+            var encodedSignature = UrlBase64.Encode(GetSignature(policyBytes));
 
             return $"{baseUrl}&Policy={encodedPolicy}&Signature={encodedSignature}&Key-Pair-Id={_keyPairId}";
+        }
+
+        readonly struct AwsEpochTime
+        {
+            [JsonPropertyName("AWS:EpochTime")]
+            public long EpochTime { get; }
+
+            public AwsEpochTime(DateTimeOffset epochTime)
+            {
+                EpochTime = epochTime.ToUnixTimeSeconds();
+            }
         }
     }
 }
