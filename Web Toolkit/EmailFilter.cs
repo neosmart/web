@@ -14,7 +14,7 @@ namespace NeoSmart.Web
 {
     public class EmailFilter
     {
-        public static ILogger<EmailFilter> Logger;
+        public static ILogger<EmailFilter>? Logger;
 
         public enum BlockReason
         {
@@ -119,7 +119,7 @@ namespace NeoSmart.Web
             if (!mxFound || !mxRecords.Any())
             {
                 // No MX record associated with this address or timeout
-                Logger.LogInformation("Could not find MX record for domain {MailDomain}", address.Host);
+                Logger?.LogInformation("Could not find MX record for domain {MailDomain}", address.Host);
                 return false;
             }
 
@@ -130,7 +130,7 @@ namespace NeoSmart.Web
                 if (addresses != null && addresses.Any(BlockedMxAddresses.Contains))
                 {
                     // This mx record points to the same IP as a blacklisted MX record or timeout
-                    Logger.LogInformation("Email domain {MailDomain} has MX record {MxRecord} in blacklist!",
+                    Logger?.LogInformation("Email domain {MailDomain} has MX record {MxRecord} in blacklist!",
                         address.Host, record);
                     return false;
                 }
@@ -152,7 +152,7 @@ namespace NeoSmart.Web
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "Error checking domain MX records");
+                Logger?.LogError(ex, "Error checking domain MX records");
                 // Err on the side of caution
                 return true;
             }
