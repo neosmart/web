@@ -6,7 +6,7 @@
     <RootNamespace>NeoSmart.Web</RootNamespace>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <PackageId>NeoSmart.Web</PackageId>
-    <Version>3.1.1</Version>
+    <Version>3.1.2</Version>
     <Authors>NeoSmart Technologies, Mahmoud Al-Qudsi</Authors>
     <Company>NeoSmart Technologies</Company>
     <Description>Extension methods and helper classes specifically for the web. Includes a ScopedMutex, SafeLookup helpers for NameValueCollection, FormCollection, and Dictionary types, and dependency-free implementations of client-side signing for S3 and CloudFront. Email validation, DNS lookup, SEO redirection, URL helpers, DateTime conversion to Unix, referer validation, and more.</Description>
@@ -17,8 +17,8 @@
     <RepositoryType>git</RepositoryType>
     <PackageTags></PackageTags>
     <PackageReleaseNotes>Initial release on nuget for .NET Standard 2.1/.NET Core 3.1</PackageReleaseNotes>
-    <AssemblyVersion>3.1.1.0</AssemblyVersion>
-    <FileVersion>3.1.1.0</FileVersion>
+    <AssemblyVersion>3.1.2.0</AssemblyVersion>
+    <FileVersion>3.1.2.0</FileVersion>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 

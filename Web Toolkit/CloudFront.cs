@@ -59,6 +59,14 @@ namespace NeoSmart.Web
             }
         }
 
+    internal class TrueCamelCaseNamingPolicy : JsonNamingPolicy
+    {
+        public override string ConvertName(string name)
+        {
+            return $"{char.ToUpper(name[0])}{name.Substring(1)}";
+        }
+    }
+
     public static class CloudFront
     {
         private static string _rsaXml;
@@ -66,7 +74,7 @@ namespace NeoSmart.Web
 
         private static readonly JsonSerializerOptions CamelCasedJsonOptions = new JsonSerializerOptions()
         {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            PropertyNamingPolicy = new TrueCamelCaseNamingPolicy(),
         };
 
         public static void SetCredentials(string keyPairId, string rsaXml)
@@ -88,6 +96,14 @@ namespace NeoSmart.Web
                     return formatter.CreateSignature(bytes);
                 }
             }
+        }
+
+        private static string ToUrlSafeBase64String(byte[] input)
+        {
+            return Convert.ToBase64String(input)
+                    .Replace('+', '-')
+                    .Replace('=', '_')
+                    .Replace('/', '~');
         }
 
         public static string GetExpiringLink(string domainName, string objectName, TimeSpan expires, TimeSpan? maxAge = null, bool secure = false)
@@ -128,8 +144,11 @@ namespace NeoSmart.Web
             };
 
             var policyBytes = JsonSerializer.SerializeToUtf8Bytes(policy, CamelCasedJsonOptions);
-            var encodedPolicy = UrlBase64.Encode(policyBytes);
-            var encodedSignature = UrlBase64.Encode(GetSignature(policyBytes));
+            // CloudFront does not use the same format as UrlBase64
+            //var encodedPolicy = UrlBase64.Encode(policyBytes);
+            //var encodedSignature = UrlBase64.Encode(GetSignature(policyBytes));
+            var encodedPolicy = ToUrlSafeBase64String(policyBytes);
+            var encodedSignature = ToUrlSafeBase64String(GetSignature(policyBytes));
 
             return $"{baseUrl}&Policy={encodedPolicy}&Signature={encodedSignature}&Key-Pair-Id={_keyPairId}";
         }
