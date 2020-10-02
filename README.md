@@ -1,4 +1,4 @@
-NeoSmart Technologies Web Toolkit
+NeoSmart Technologies Web Toolkit Project
 ===
 
 The NeoSmart Technologies .NET Web Toolkit is a collection of classes, routines, and methods that we have found useful in the development of ASP.NET (MVC) projects.
