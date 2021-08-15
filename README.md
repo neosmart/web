@@ -60,29 +60,35 @@ The `ScopedMutex` object is a hybrid between a named `Mutex` and a `lock` block.
 
 Since it uses a GUID, it will block across sessions and page requests, and will be "deleted" when either all references to it cease to exist, or the ASP.NET application is restarted. It is intended to be used almost exclusively in `using` blocks.
 
-* `ScopedMutex(string name)`
-* `public bool WaitOne()`
-* `public void ReleaseMutex()`
-* `public void Dispose()`
+* `ScopedMutex::Create(string name)`
+* `ScopedMutex::CreateAsync(string name)`
 
-The `ScopedMutex` constructor is where the unique lock/mutex name is specified in the form of a string. It can only be set in the constructor (i.e. the name cannot be set nor changed at a later time).
+`ScopedMutex` is a RAII wrapper around an underlying semaphore and does not expose the equivalent of `.Lock()` or `.Release()` - instantiation of the `ScopedMutex` guarantees exclusive access for the duration of the `ScopedMutex` lifetime. It's therefore of critical importance that a `ScopedMutex` is correctly disposed and we recommend initializing it exclusively with `using` statements.
 
 Usage is very simple:
 
-	using (var mutex = new ScopedMutex("myguid"))
-	{
-		mutex.WaitOne();
-		//Do something here
-		mutex.ReleaseMutex();
-	}
+```csharp
+using (var mutex = ScopedMutex::Create("myguid"))
+{
+	// Exclusive access granted, any other calls to Create()
+	// or CreateAsync() will block until `mutex` is disposed!
 
-As you can see, the `ScopedMutex` must be explicitly locked with `ScopedMutex.WaitOne()`. To prevent confusion, there is no parameter to lock on creation in the constructor as there is in the `Mutex` class.
+	foo.DoSomethingCritical();
+}
+```
 
-Should the code terminate or throw an exception for any reason in the middle of the `using` block before `mutex.ReleaseMutex()` is called, the `Dispose` method will automatically release the mutex and make it available for other threads/requests. This holds true regardless of whether the request is terminated due to user abort, an exception in the `//Do something here` block, etc.
+In an async context, `ScopedMutex::CreateAsync()` should be used instead - make sure not to forget to await the result of the call, though! For example:
 
-It is important to note that `ScopedMutex` does not throw an `AbandonedMutexException`: if another thread/request holding the `ScopedMutex` with the same GUID aborts in the middle, the current `WaitOne()` will succeed without notice that anything went wrong. Given that the `ScopedMutex` object is meant for request synchronization, there is little benefit to requiring everyone to handle `AbandonedMutexException` themselves.
+```csharp
+using (var mutex = await ScopedMutex::CreateAsync("myguid")
+{
+	// Exclusive access granted
+}
+```
 
-The usage of `ReleaseMutex()` in the above code sample is extraneous. It serves zero purpose other than clearly specifying the intended behavior. Upon reaching the end of the `using` block, if `WaitOne()` had been previously called without a subsequent call to `ReleaseMutex()`, `ReleaseMutex()` will be called automatically, as one would expect.
+Should the code terminate or throw an exception for any reason in the middle of the `using` block before the mutex is disposed, the `using` will automatically release the named mutex and make it available for other threads/requests. This holds true regardless of whether the request is terminated due to user abort, an exception in the `//Do something here` block, etc.
+
+It is important to note that `ScopedMutex` does not throw an `AbandonedMutexException`: if another thread/request holding the `ScopedMutex` with the same name/GUID aborts, the next instantiation of a `ScopedMutex` with the same name will succeed without notice that anything went wrong.
 
 NeoSmart.Web.Bitly
 ---
