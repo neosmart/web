@@ -1,11 +1,14 @@
+using F23.StringSimilarity;
+using F23.StringSimilarity.Interfaces;
 using Microsoft.Extensions.Logging;
+using NeoSmart.Collections;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Net.Mail;
-using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -31,14 +34,18 @@ namespace NeoSmart.Web
             Blacklisted,
             /// The user/domain combination tripped one or more heuristic filters that indicate a
             /// (high) probability of being a fake email.
-            Heuristic
+            Heuristic,
+            /// <summary>
+            /// The domain is likely a typo of a top-100 address.
+            /// </summary>
+            LikelyTypo,
         }
         private static readonly Regex EmailRegex = new Regex(@"^(?("")(""[^""]+?""@)|(([0-9a-z]((\.(?!\.))|[-!#\$%&'\*\+/=\?\^`\{\}\|~\w])*)(?<=[0-9a-z])@))" +
                                      @"(?(\[)(\[(\d{1,3}\.){3}\d{1,3}\])|(([0-9a-z][-\w]*[0-9a-z]*\.)+[a-z0-9]{2,17}))$",
                                      RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly Regex NumericEmailRegex = new Regex(@"^[0-9]+$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly Regex NumericDomainRegex = new Regex(@"^[0-9]+\.[^.]+$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-        private static readonly Regex MistypedTldRegex = new Regex(@"\.(cm|cmo|om|comm)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex MistypedTldRegex = new Regex(@"\.(cm|cmo|om|comm|con|coom|ccom|comn|c0m|lcom|ent)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly Regex TldRegex = new Regex(@"\.(ru|cn|info|tk)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly Regex ExpressionRegex = new Regex(@"\*|^a+b+c+|address|bastard|bitch|blabla|d+e+f+g+|example|fake|fuck|junk|junk|^lol$| (a|no|some)name" +
             "|no1|nobody|none|noone|nope|nothank|noway|qwerty|sample|spam|suck|test|thanks|^user$|whatever|^x+y+z+", RegexOptions.Compiled | RegexOptions.IgnoreCase);
@@ -46,19 +53,21 @@ namespace NeoSmart.Web
         private static readonly Regex QwertyDomainRegex = new Regex(@"^[asdfghjkvlx]+\.[^.]+$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 		private static readonly Regex RepeatedCharsRegex = new Regex(@"(.)(:?\1){3,}|^(.)\3+$?$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
-        static private HashSet<IPAddress> BlockedMxAddresses = new HashSet<IPAddress>();
-        static private ManualResetEventSlim ReverseDnsCompleteEvent = new ManualResetEventSlim(false);
-        static private bool ReverseDnsComplete = false;
+        private static HashSet<IPAddress> BlockedMxAddresses = new HashSet<IPAddress>();
+        private static ManualResetEventSlim ReverseDnsCompleteEvent = new ManualResetEventSlim(false);
+        private static object ReverseDnsMutexLock = new object();
+        private static bool ReverseDnsComplete = false;
 
         static EmailFilter()
         {
-            //This cannot be run in the constructor and needs to run in a separate thread
-            //not our fault, see here: https://blogs.msdn.microsoft.com/pfxteam/2011/05/03/static-constructor-deadlocks/
-            new Thread((() =>
+            ValidMxDomainCache = new(TopDomains);
+
+            // This cannot be run in the constructor and needs to run in a separate thread
+            // not our fault, see here: https://blogs.msdn.microsoft.com/pfxteam/2011/05/03/static-constructor-deadlocks/
+            new Thread(() =>
             {
-                //Create a set of IP addresses for known bad domains
-                //used to reverse filter any future MX lookups for a match
-                //this will catch aliases for temporary email address services
+                // Create a set of IP addresses for known bad domains used to reverse filter any future MX lookups for a match.
+                // This will catch aliases for temporary email address services.
                 BlockedMxAddresses = new HashSet<IPAddress>();
                 Parallel.ForEach(MxBlackList, () => new HashSet<IPAddress>(), (domain, state, local) =>
                 {
@@ -80,37 +89,49 @@ namespace NeoSmart.Web
                             }
                         }
                     }
-                    catch
+                    catch (Exception ex)
                     {
+                        Logger?.LogWarning(ex, "Error retrieving MX info for domain {MxBlackListDomain}", domain);
                     }
                     return local;
                 }, (local) =>
                 {
-                    foreach (var ip in local)
+                    lock (BlockedMxAddresses)
                     {
-                        BlockedMxAddresses.Add(ip);
+                        foreach (var ip in local)
+                        {
+                            BlockedMxAddresses.Add(ip);
+                        }
                     }
                 });
 
                 ReverseDnsCompleteEvent.Set();
-            })).Start();
+                ReverseDnsComplete = true;
+            }).Start();
         }
 
 		// aka IsDefinitelyFakeEmail
-		static public bool IsFakeEmail(string email)
+		public static bool IsFakeEmail(string email)
 		{
 			return IsProbablyFakeEmail(email, 0, true);
 		}
 
-        static public bool HasValidMx(MailAddress address)
+        public static bool HasValidMx(MailAddress address)
         {
             if (!ReverseDnsComplete)
             {
-                ReverseDnsCompleteEvent.Wait();
-                ReverseDnsComplete = true;
+                lock (ReverseDnsMutexLock)
+                {
+                    if (ReverseDnsCompleteEvent is not null)
+                    {
+                        ReverseDnsCompleteEvent.Wait();
+                        ReverseDnsCompleteEvent.Dispose();
+                        ReverseDnsCompleteEvent = null!;
+                    }
+                }
             }
 
-            if (ValidDomainCache.Contains(address.Host))
+            if (ValidMxDomainCache.Contains(address.Host))
             {
                 return true;
             }
@@ -136,9 +157,9 @@ namespace NeoSmart.Web
                 }
             }
 
-            lock (ValidDomainCache)
+            lock (ValidMxDomainCache)
             {
-                ValidDomainCache.Add(address.Host);
+                ValidMxDomainCache.Add(address.Host);
             }
 
             return true;
@@ -158,14 +179,14 @@ namespace NeoSmart.Web
             }
         }
 
-        static public bool IsProbablyFakeEmail(string email, int meanness, bool validateMx = false)
+        public static bool IsProbablyFakeEmail(string email, int meanness, bool validateMx = false)
         {
             if (string.IsNullOrWhiteSpace(email))
             {
                 return true;
             }
 
-            //Instead of making all the regex rules case-insensitive
+            // Instead of making all the regex rules case-insensitive
             email = email.ToLower();
             if (!IsValidFormat(email))
             {
@@ -181,16 +202,15 @@ namespace NeoSmart.Web
                 {
                     return true;
                 }
-                if (MistypedDomains.Contains(mailAddress.Host))
-                {
-                    return true;
-                }
                 if (MistypedTldRegex.IsMatch(mailAddress.Host))
                 {
                     return true;
                 }
+                if (TypoDomains.Contains(mailAddress.Host))
+                {
+                    return true;
+                }
             }
-
             if (meanness >= 1)
             {
                 if (BlockedDomains.Contains(mailAddress.Host))
@@ -205,7 +225,7 @@ namespace NeoSmart.Web
                     return true;
                 }
             }
-			if (meanness >= 4)
+            if (meanness >= 4)
 			{
 				if (RepeatedCharsRegex.IsMatch(mailAddress.User) ||
 					RepeatedCharsRegex.IsMatch(mailAddress.Host))
@@ -241,8 +261,8 @@ namespace NeoSmart.Web
             }
             if (meanness >= 7)
             {
-                //this is including the tld, so 3 is insanely generous
-                //2 letters + period + 3 tld = 6
+                // This is including the tld, so 3 is insanely generous.
+                // 2 letters + period + 3 tld = 6
                 if (mailAddress.Host.Length < 6)
                 {
                     return true;
@@ -251,6 +271,10 @@ namespace NeoSmart.Web
             if (meanness >= 8)
             {
                 if (mailAddress.User.Length < 3)
+                {
+                    return true;
+                }
+                if (HasMaybeMistypedDomain(mailAddress))
                 {
                     return true;
                 }
@@ -270,7 +294,7 @@ namespace NeoSmart.Web
                 }
             }
 
-            //Do this last because it's the most expensive
+            // Do this last because it's the most expensive
             if (validateMx && !HasValidMx(mailAddress))
             {
                 return true;
@@ -279,26 +303,86 @@ namespace NeoSmart.Web
             return false;
         }
 
-        //From http://msdn.microsoft.com/en-us/library/01escwtf.aspx
-        static public bool IsValidFormat(string email)
+        public static bool HasMaybeMistypedDomain(string email)
+        {
+            MailAddress mailAddress;
+            try
+            {
+                mailAddress = new MailAddress(email.ToLowerInvariant().Trim());
+            }
+            catch(Exception ex)
+            {
+                Logger.LogDebug(ex, "Error parsing provided email {InputEmail} to MailAddress", email);
+                return false;
+            }
+
+            return HasMaybeMistypedDomain(mailAddress);
+        }
+
+        public static bool HasMaybeMistypedDomain(MailAddress mailAddress)
+        {
+            return HasMaybeMistypedDomain(mailAddress, out _, out _);
+        }
+
+        private static readonly INormalizedStringSimilarity StringSimilarity = new NormalizedLevenshtein();
+        public static bool HasMaybeMistypedDomain(MailAddress mailAddress,
+            [NotNullWhen(true)] out MailAddress? corrected,
+            [NotNullWhen(true)] out double? similarity,
+            double threshold = 0.75)
+        {
+            var domain = mailAddress.Host.ToLowerInvariant();
+            if (TopDomains.Contains(domain))
+            {
+                corrected = null;
+                similarity = null;
+                return false;
+            }
+
+            string bestMatch = "";
+            similarity = 0.0;
+            foreach (var topDomain in TopDomains)
+            {
+                var s = StringSimilarity.Similarity(domain, topDomain) * Math.Min(topDomain.Length, domain.Length) / Math.Max(topDomain.Length, domain.Length);
+                if (s > similarity)
+                {
+                    bestMatch = topDomain;
+                    similarity = s;
+                }
+            }
+
+            if (similarity > threshold)
+            {
+                // This is extremely similar to a popular email domain and isn't itself a popular email domain.
+                corrected = new MailAddress($"{mailAddress.User}@{bestMatch}", mailAddress.DisplayName);
+                return true;
+            }
+
+            corrected = null;
+            return false;
+        }
+
+        private static readonly IdnMapping IdnMapping = new();
+        private static readonly Regex EmailPartsRegex = new Regex(@"(@)(.+)$",
+            RegexOptions.Compiled | RegexOptions.CultureInvariant,
+            TimeSpan.FromMilliseconds(25));
+
+        public static bool IsValidFormat(string email)
         {
             bool invalid = false;
-            if (String.IsNullOrEmpty(email))
+            if (string.IsNullOrEmpty(email))
             {
                 return false;
             }
 
             try
             {
-                email = Regex.Replace(email, @"(@)(.+)$", match =>
+                email = EmailPartsRegex.Replace(email, match =>
                 {
-                    //use IdnMapping class to convert Unicode domain names.
-                    var idn = new IdnMapping();
-
+                    // Use IdnMapping class to convert Unicode domain names.
                     string domainName = match.Groups[2].Value;
                     try
                     {
-                        domainName = idn.GetAscii(domainName);
+                        domainName = IdnMapping.GetAscii(domainName);
                     }
                     catch (ArgumentException)
                     {
@@ -306,10 +390,11 @@ namespace NeoSmart.Web
                     }
 
                     return match.Groups[1].Value + domainName;
-                }, RegexOptions.Compiled, TimeSpan.FromMilliseconds(200));
+                });
             }
-            catch (RegexMatchTimeoutException)
+            catch (RegexMatchTimeoutException ex)
             {
+                Logger.LogWarning(ex, $"Timeout evaluating email {{InputEmail}} with {nameof(EmailPartsRegex)} regular expression!", email);
                 return false;
             }
 
@@ -318,36 +403,62 @@ namespace NeoSmart.Web
                 return false;
             }
 
-            //return true if input is in valid e-mail format.
             try
             {
+                // return true if input is in valid e-mail format.
                 return EmailRegex.IsMatch(email);
             }
-            catch (RegexMatchTimeoutException)
+            catch (RegexMatchTimeoutException ex)
             {
+                Logger.LogWarning(ex, $"Timeout evaluating email {{InputEmail}} with {nameof(EmailRegex)} regular expression!", email);
                 return false;
             }
         }
 
-        // These domains will never fail an MX check
-        static private readonly HashSet<string> ValidDomainCache = new HashSet<string>()
+        // These domains will never fail an MX check. Using a HashSet and not a SortedList
+        // because this list grows over time. Initialized in static constructor.
+        private static readonly HashSet<string> ValidMxDomainCache;
+
+        /// <summary>
+        /// These domains have (or had) valid MX records but are still to be considered typos.
+        /// </summary>
+        public static readonly SortedList<string> TypoDomains = new()
         {
-            "gmail.com",
-            "googlemail.com",
-            "hotmail.com",
-            "msn.com",
-            "outlook.com",
-            "yahoo.com",
-            "aol.com",
+            "ahoo.com",
+            "comast.net",
+            "gail.com",
+            "gamail.com",
+            "gamil.com",
+            "gmail.cn",
+            "gmail.co",
+            "gmial.com",
+            "gmil.com",
+            "gmsil.com",
+            "gnail.com",
+            "gol.com",
+            "homail.com",
+            "homtail.com",
+            "hotmal.com",
+            "hotmsil.co",
+            "hotmsil.com",
+            "ive.com",
+            "my.com",
+            "otmail.com",
+            "verizion.net",
+            "verrizon.net",
+            "yahho.com",
+            "yahool.com",
+            "yahooo.com",
         };
 
         // Domains that have hard rules as to the length of the prefix (prefix@domain)
-        private readonly static Dictionary<string, int> DomainMinimumPrefix = new Dictionary<string, int>()
+        private static readonly SortedList<string, int> DomainMinimumPrefix = new()
         {
             { "gmail.com", 6 },
+            { "googlemail.com", 6 },
         };
 
-        private readonly static HashSet<string> MxBlackList = new HashSet<string>(new[]
+        private static readonly SortedList<string> MxBlackList = new(new[]
         {
             "mvrht.com", // 10minutemail.com
             "mailinator.com",
@@ -357,14 +468,111 @@ namespace NeoSmart.Web
             "generator.email", // primary web address and mx record for many different domains
         });
 
-        private readonly static SortedSet<string> MistypedDomains = new SortedSet<string>()
+        private static readonly SortedList<string> TopDomains = new()
         {
-            "gail.com",
-            "gamil.com",
-            "gmai.com",
+            "gmail.com",
+            "yahoo.com",
+            "hotmail.com",
+            "aol.com",
+            "hotmail.co.uk",
+            "hotmail.fr",
+            "msn.com",
+            "yahoo.fr",
+            "wanadoo.fr",
+            "orange.fr",
+            "comcast.net",
+            "yahoo.co.uk",
+            "yahoo.com.br",
+            "yahoo.co.in",
+            "live.com",
+            "rediffmail.com",
+            "free.fr",
+            "gmx.de",
+            "web.de",
+            "yandex.ru",
+            "ymail.com",
+            "libero.it",
+            "outlook.com",
+            "uol.com.br",
+            "bol.com.br",
+            "mail.ru",
+            "cox.net",
+            "hotmail.it",
+            "sbcglobal.net",
+            "sfr.fr",
+            "live.fr",
+            "verizon.net",
+            "live.co.uk",
+            "googlemail.com",
+            "yahoo.es",
+            "ig.com.br",
+            "live.nl",
+            "bigpond.com",
+            "terra.com.br",
+            "yahoo.it",
+            "neuf.fr",
+            "yahoo.de",
+            "alice.it",
+            "rocketmail.com",
+            "att.net",
+            "laposte.net",
+            "facebook.com",
+            "bellsouth.net",
+            "yahoo.in",
+            "hotmail.es",
+            "charter.net",
+            "yahoo.ca",
+            "yahoo.com.au",
+            "rambler.ru",
+            "hotmail.de",
+            "tiscali.it",
+            "shaw.ca",
+            "yahoo.co.jp",
+            "sky.com",
+            "earthlink.net",
+            "optonline.net",
+            "freenet.de",
+            "t-online.de",
+            "aliceadsl.fr",
+            "virgilio.it",
+            "home.nl",
+            "qq.com",
+            "telenet.be",
+            "me.com",
+            "yahoo.com.ar",
+            "tiscali.co.uk",
+            "yahoo.com.mx",
+            "voila.fr",
+            "gmx.net",
+            "mail.com",
+            "planet.nl",
+            "tin.it",
+            "live.it",
+            "ntlworld.com",
+            "arcor.de",
+            "yahoo.co.id",
+            "frontiernet.net",
+            "hetnet.nl",
+            "live.com.au",
+            "yahoo.com.sg",
+            "zonnet.nl",
+            "club-internet.fr",
+            "juno.com",
+            "optusnet.com.au",
+            "blueyonder.co.uk",
+            "bluewin.ch",
+            "skynet.be",
+            "sympatico.ca",
+            "windstream.net",
+            "mac.com",
+            "centurytel.net",
+            "chello.nl",
+            "live.ca",
+            "aim.com",
+            "bigpond.net.au",
         };
 
-        //Originally from http://www.digitalfaq.com/forum/web-tech/5050-throwaway-email-block.html
+        // Originally from http://www.digitalfaq.com/forum/web-tech/5050-throwaway-email-block.html
         private readonly static HashSet<string> BlockedDomains = new HashSet<string>(new[]
             {
                 "0clickemail.com",
@@ -423,6 +631,7 @@ namespace NeoSmart.Web
                 "cmail.com",
                 "cmail.net",
                 "cmail.org",
+                "com.com",
                 "consumerriot.com",
                 "cool.fr.nf",
                 "courriel.fr.nf",
@@ -608,6 +817,7 @@ namespace NeoSmart.Web
                 "nepwk.com",
                 "nervmich.net",
                 "nervtmich.net",
+                "net.net",
                 "nice-4u.com",
                 "no-spam.ws",
                 "nobulk.com",
@@ -639,6 +849,8 @@ namespace NeoSmart.Web
                 "proxymail.eu",
                 "prtnx.com",
                 "putthisinyourspamdatabase.com",
+                "q1.com",
+                "qa.com",
                 "qq.com",
                 "quickinbox.com",
                 "rcpt.at",

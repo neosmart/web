@@ -20,7 +20,8 @@ namespace NeoSmart.Web
     {
         sealed class CountedMutex : IDisposable
         {
-            public SemaphoreSlim Mutex;
+            public readonly SemaphoreSlim Mutex;
+            // This is volatile to prevent load-load reordering
             public volatile int RefCount;
 
             public CountedMutex()
@@ -34,9 +35,7 @@ namespace NeoSmart.Web
                 if (Interlocked.Decrement(ref RefCount) == 0)
                 {
                     Mutex.Dispose();
-#if DEBUG
                     Debug.Assert(RefCount == 0, "Another thread obtained this mutex (incremented RefCount) after we set RefCount to zero!");
-#endif
                 }
             }
         }
