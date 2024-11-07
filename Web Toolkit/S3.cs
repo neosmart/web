@@ -35,7 +35,7 @@ namespace NeoSmart.Web
             filename = filename.Replace("+", " ");
 
             objectName = objectName.Replace("%20", " ");
-            objectName = Uri.EscapeUriString(objectName);
+            objectName = Uri.EscapeDataString(objectName);
             objectName = objectName.Replace("%2F", "/");
             objectName = objectName.Replace("+", "%20");
 

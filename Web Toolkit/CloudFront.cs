@@ -85,7 +85,7 @@ namespace NeoSmart.Web
 
         private static byte[] GetSignature(byte[] toSign)
         {
-            using (var sha1 = new SHA1CryptoServiceProvider())
+            using (var sha1 = SHA1.Create())
             {
                 var bytes = sha1.ComputeHash(toSign);
                 using (var rsa = new RSACryptoServiceProvider())
@@ -118,7 +118,7 @@ namespace NeoSmart.Web
             filename = filename.Replace("+", " ");
 
             objectName = objectName.Replace("%20", " ");
-            objectName = Uri.EscapeUriString(objectName);
+            objectName = Uri.EscapeDataString(objectName);
             objectName = objectName.Replace("%2F", "/");
             objectName = objectName.Replace("+", "%20");
 
