@@ -15,7 +15,7 @@ using System.Threading.Tasks;
 
 namespace NeoSmart.Web
 {
-    public class EmailFilter
+    public partial class EmailFilter
     {
         public static ILogger<EmailFilter>? Logger;
 
@@ -40,18 +40,24 @@ namespace NeoSmart.Web
             /// </summary>
             LikelyTypo,
         }
-        private static readonly Regex EmailRegex = new Regex(@"^(?("")(""[^""]+?""@)|(([0-9a-z]((\.(?!\.))|[-!#\$%&'\*\+/=\?\^`\{\}\|~\w])*)(?<=[0-9a-z])@))" +
-                                     @"(?(\[)(\[(\d{1,3}\.){3}\d{1,3}\])|(([0-9a-z][-\w]*[0-9a-z]*\.)+[a-z0-9]{2,17}))$",
-                                     RegexOptions.Compiled | RegexOptions.IgnoreCase);
-        private static readonly Regex NumericEmailRegex = new Regex(@"^[0-9]+$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-        private static readonly Regex NumericDomainRegex = new Regex(@"^[0-9]+\.[^.]+$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-        private static readonly Regex MistypedTldRegex = new Regex(@"\.(cm|cmo|om|comm|con|coom|ccom|comn|c0m|lcom|ent)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-        private static readonly Regex TldRegex = new Regex(@"\.(ru|cn|info|tk)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-        private static readonly Regex ExpressionRegex = new Regex(@"\*|^a+b+c+|address|bastard|bitch|blabla|d+e+f+g+|example|fake|fuck|junk|junk|^lol$| (a|no|some)name" +
-            "|no1|nobody|none|noone|nope|nothank|noway|qwerty|sample|spam|suck|test|thanks|^user$|whatever|^x+y+z+", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-        private static readonly Regex QwertyRegex = new Regex(@"^[asdfghjkvlxm]+$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-        private static readonly Regex QwertyDomainRegex = new Regex(@"^[asdfghjkvlx]+\.[^.]+$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-		private static readonly Regex RepeatedCharsRegex = new Regex(@"(.)(:?\1){3,}|^(.)\3+$?$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        [GeneratedRegex(@"^(?("")(""[^""]+?""@)|(([0-9a-z]((\.(?!\.))|[-!#\$%&'\*\+/=\?\^`\{\}\|~\w])*)(?<=[0-9a-z])@))(?(\[)(\[(\d{1,3}\.){3}\d{1,3}\])|(([0-9a-z][-\w]*[0-9a-z]*\.)+[a-z0-9]{2,17}))$", RegexOptions.IgnoreCase)]
+        private static partial Regex EmailRegex();
+        [GeneratedRegex(@"^[0-9]+$", RegexOptions.IgnoreCase)]
+        private static partial Regex NumericEmailRegex();
+        [GeneratedRegex(@"^[0-9]+\.[^.]+$", RegexOptions.IgnoreCase)]
+        private static partial Regex NumericDomainRegex();
+        [GeneratedRegex(@"\.(cm|cmo|om|comm|con|coom|ccom|comn|c0m|lcom|ent)$", RegexOptions.IgnoreCase)]
+        private static partial Regex MistypedTldRegex();
+        [GeneratedRegex(@"\.(ru|cn|info|tk)$", RegexOptions.IgnoreCase)]
+        private static partial Regex TldRegex();
+        [GeneratedRegex(@"\*|^a+b+c+|address|bastard|bitch|blabla|d+e+f+g+|example|fake|fuck|junk|junk|^lol$| (a|no|some)name|no1|nobody|none|noone|nope|nothank|noway|qwerty|sample|spam|suck|test|thanks|^user$|whatever|^x+y+z+", RegexOptions.IgnoreCase)]
+        private static partial Regex ExpressionRegex();
+        [GeneratedRegex(@"^[asdfghjkvlxm]+$", RegexOptions.IgnoreCase)]
+        private static partial Regex QwertyRegex();
+        [GeneratedRegex(@"^[asdfghjkvlx]+\.[^.]+$", RegexOptions.IgnoreCase)]
+        private static partial Regex QwertyDomainRegex();
+        [GeneratedRegex(@"(.)(:?\1){3,}|^(.)\3+$?$", RegexOptions.IgnoreCase)]
+        private static partial Regex RepeatedCharsRegex();
 
         private static HashSet<IPAddress> BlockedMxAddresses = new HashSet<IPAddress>();
         private static ManualResetEventSlim ReverseDnsCompleteEvent = new ManualResetEventSlim(false);
@@ -110,11 +116,11 @@ namespace NeoSmart.Web
             }).Start();
         }
 
-		// aka IsDefinitelyFakeEmail
-		public static bool IsFakeEmail(string email)
-		{
-			return IsProbablyFakeEmail(email, 0, true);
-		}
+        // aka IsDefinitelyFakeEmail
+        public static bool IsFakeEmail(string email)
+        {
+            return IsProbablyFakeEmail(email, 0, true);
+        }
 
         public static bool HasValidMx(MailAddress address)
         {
@@ -179,7 +185,7 @@ namespace NeoSmart.Web
             }
         }
 
-        public static bool IsProbablyFakeEmail(string email, int meanness, bool validateMx = false)
+        public static bool IsProbablyFakeEmail(string? email, int meanness, bool validateMx = false)
         {
             if (string.IsNullOrWhiteSpace(email))
             {
@@ -202,7 +208,7 @@ namespace NeoSmart.Web
                 {
                     return true;
                 }
-                if (MistypedTldRegex.IsMatch(mailAddress.Host))
+                if (MistypedTldRegex().IsMatch(mailAddress.Host))
                 {
                     return true;
                 }
@@ -220,41 +226,41 @@ namespace NeoSmart.Web
             }
             if (meanness >= 2)
             {
-                if (ExpressionRegex.IsMatch(mailAddress.User))
+                if (ExpressionRegex().IsMatch(mailAddress.User))
                 {
                     return true;
                 }
             }
             if (meanness >= 4)
-			{
-				if (RepeatedCharsRegex.IsMatch(mailAddress.User) ||
-					RepeatedCharsRegex.IsMatch(mailAddress.Host))
-				{
-					return true;
-				}
-			}
-            if (meanness >= 5)
             {
-                if (NumericEmailRegex.IsMatch(mailAddress.User))
+                if (RepeatedCharsRegex().IsMatch(mailAddress.User) ||
+                    RepeatedCharsRegex().IsMatch(mailAddress.Host))
                 {
                     return true;
                 }
-                if (ExpressionRegex.IsMatch(email))
+            }
+            if (meanness >= 5)
+            {
+                if (NumericEmailRegex().IsMatch(mailAddress.User))
+                {
+                    return true;
+                }
+                if (ExpressionRegex().IsMatch(email))
                 {
                     return true;
                 }
             }
             if (meanness >= 6)
             {
-                if (QwertyRegex.IsMatch(mailAddress.User))
+                if (QwertyRegex().IsMatch(mailAddress.User))
                 {
                     return true;
                 }
-                if (QwertyDomainRegex.IsMatch(mailAddress.Host))
+                if (QwertyDomainRegex().IsMatch(mailAddress.Host))
                 {
                     return true;
                 }
-                if (NumericDomainRegex.IsMatch(mailAddress.Host))
+                if (NumericDomainRegex().IsMatch(mailAddress.Host))
                 {
                     return true;
                 }
@@ -288,7 +294,7 @@ namespace NeoSmart.Web
             }
             if (meanness >= 10)
             {
-                if (TldRegex.IsMatch(mailAddress.Host))
+                if (TldRegex().IsMatch(mailAddress.Host))
                 {
                     return true;
                 }
@@ -312,7 +318,7 @@ namespace NeoSmart.Web
             }
             catch(Exception ex)
             {
-                Logger.LogDebug(ex, "Error parsing provided email {InputEmail} to MailAddress", email);
+                Logger?.LogDebug(ex, "Error parsing provided email {InputEmail} to MailAddress", email);
                 return false;
             }
 
@@ -362,9 +368,8 @@ namespace NeoSmart.Web
         }
 
         private static readonly IdnMapping IdnMapping = new();
-        private static readonly Regex EmailPartsRegex = new Regex(@"(@)(.+)$",
-            RegexOptions.Compiled | RegexOptions.CultureInvariant,
-            TimeSpan.FromMilliseconds(25));
+        [GeneratedRegex(@"(@)(.+)$", RegexOptions.CultureInvariant)]
+        private static partial Regex EmailPartsRegex();
 
         public static bool IsValidFormat(string email)
         {
@@ -376,7 +381,7 @@ namespace NeoSmart.Web
 
             try
             {
-                email = EmailPartsRegex.Replace(email, match =>
+                email = EmailPartsRegex().Replace(email, match =>
                 {
                     // Use IdnMapping class to convert Unicode domain names.
                     string domainName = match.Groups[2].Value;
@@ -394,7 +399,7 @@ namespace NeoSmart.Web
             }
             catch (RegexMatchTimeoutException ex)
             {
-                Logger.LogWarning(ex, $"Timeout evaluating email {{InputEmail}} with {nameof(EmailPartsRegex)} regular expression!", email);
+                Logger?.LogWarning(ex, $"Timeout evaluating email {{InputEmail}} with {nameof(EmailPartsRegex)} regular expression!", email);
                 return false;
             }
 
@@ -406,11 +411,11 @@ namespace NeoSmart.Web
             try
             {
                 // return true if input is in valid e-mail format.
-                return EmailRegex.IsMatch(email);
+                return EmailRegex().IsMatch(email);
             }
             catch (RegexMatchTimeoutException ex)
             {
-                Logger.LogWarning(ex, $"Timeout evaluating email {{InputEmail}} with {nameof(EmailRegex)} regular expression!", email);
+                Logger?.LogWarning(ex, $"Timeout evaluating email {{InputEmail}} with {nameof(EmailRegex)} regular expression!", email);
                 return false;
             }
         }
