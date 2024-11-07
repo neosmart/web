@@ -200,9 +200,9 @@ namespace NeoSmart.Web
             first = ProperNameCase(RemoveSalutation(first));
             last = ProperNameCase(RemoveSalutation(last));
 
-            //We have too many users that put "First Last" as first name and "Last" as last name
-            string match = $" {last.ToLowerInvariant()}";
-            if (first.ToLowerInvariant().EndsWith(match))
+            // We have too many users that put "First Last" as first name and "Last" as last name
+            string match = $" {last}";
+            if (first.EndsWith(match, StringComparison.InvariantCultureIgnoreCase))
             {
                 first = first.Substring(0, first.Length - match.Length).TrimEnd();
             }

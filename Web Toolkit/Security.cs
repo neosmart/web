@@ -1,16 +1,12 @@
 using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Web;
 
 namespace NeoSmart.Web
 {
     public static class Security
     {
-        public static readonly SortedSet<string> ValidReferers = new SortedSet<string>(StringComparer.InvariantCultureIgnoreCase)
+        public static readonly SortedSet<string?> ValidReferers = new(StringComparer.OrdinalIgnoreCase)
         {
             null,
             ""
