@@ -1,11 +1,12 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Primitives;
+using System.Diagnostics.CodeAnalysis;
 
 namespace NeoSmart.Web
 {
     public static class FormCollectionExtensions
     {
-        public static bool TryGetSingleValue(this IFormCollection collection, string key, out string value)
+        public static bool TryGetSingleValue(this IFormCollection collection, string key, [NotNullWhen(true)] out string? value)
         {
             StringValues values;
             if (collection.TryGetValue(key, out values))
@@ -26,7 +27,7 @@ namespace NeoSmart.Web
             return "";
         }
 
-        public static bool TryGetSingleValue(this IQueryCollection collection, string key, out string value)
+        public static bool TryGetSingleValue(this IQueryCollection collection, string key, [NotNullWhen(true)] out string? value)
         {
             StringValues values;
             if (collection.TryGetValue(key, out values))

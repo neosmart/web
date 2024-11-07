@@ -65,8 +65,7 @@ namespace NeoSmart.Web
             //  16-bit block: 192.168.0.0 through 192.168.255.255
             //  Link-local addresses: 169.254.0.0 through 169.254.255.255 (http://en.wikipedia.org/wiki/Link-local_address)
 
-            IPAddress ip;
-            if (IPAddress.TryParse(ipAddress, out ip))
+            if (IPAddress.TryParse(ipAddress, out var ip))
             {
                 if (ip.AddressFamily == AddressFamily.InterNetworkV6)
                 {

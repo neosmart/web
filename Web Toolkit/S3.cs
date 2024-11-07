@@ -14,8 +14,8 @@ namespace NeoSmart.Web
 
     public static class S3
     {
-        private static string _username;
-        private static string _password;
+        private static string _username = null!;
+        private static string _password = null!;
 
         public static void SetCredentials(string username, string password)
         {

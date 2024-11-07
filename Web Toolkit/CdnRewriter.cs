@@ -73,7 +73,7 @@ namespace NeoSmart.Web
             {
                 html = CssRegexes.Aggregate(html, (current, regex) => regex.Replace(current, PrefixDomain));
             }
-            
+
             byte[] outData = Encoding.Default.GetBytes(html);
             _stream.Write(outData, 0, outData.GetLength(0));
         }

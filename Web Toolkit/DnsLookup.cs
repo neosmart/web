@@ -32,7 +32,7 @@ namespace NeoSmart.Web
             return records.Select(r => r.ExchangeDomainName.ToString());
         }
 
-        public static bool GetIpAddresses(string domain, out IPAddress[] addresses)
+        public static bool GetIpAddresses(string domain, out IPAddress[]? addresses)
         {
             if (!DomainName.TryParse(domain, out var parsedDomain))
             {

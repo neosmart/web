@@ -13,7 +13,7 @@ namespace NeoSmart.Web
 
         public static TValue SafeLookup<TKey, TValue>(this IDictionary<TKey, TValue> dictionary, TKey key, TValue ifNotFound)
         {
-            return dictionary.TryGetValue(key, out TValue value) ? value : ifNotFound;
+            return dictionary.TryGetValue(key, out TValue? value) ? value : ifNotFound;
         }
     }
 }

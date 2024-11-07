@@ -16,7 +16,7 @@ namespace NeoSmart.Web
             ""
         };
 
-        public static bool ValidateReferer(string referer)
+        public static bool ValidateReferer(string? referer)
         {
             if (!ValidReferers.Contains(referer))
             {

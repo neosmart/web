@@ -18,7 +18,7 @@ namespace NeoSmart.Web
                 XmlDocument xmlDoc = new XmlDocument();
                 xmlDoc.LoadXml(xmlString);
 
-                if (xmlDoc.DocumentElement.Name.Equals("RSAKeyValue"))
+                if (xmlDoc.DocumentElement!.Name.Equals("RSAKeyValue"))
                 {
                     foreach (XmlNode node in xmlDoc.DocumentElement.ChildNodes)
                     {
@@ -69,8 +69,8 @@ namespace NeoSmart.Web
 
     public static class CloudFront
     {
-        private static string _rsaXml;
-        private static string _keyPairId;
+        private static string _rsaXml = null!;
+        private static string _keyPairId = null!;
 
         private static readonly JsonSerializerOptions CamelCasedJsonOptions = new JsonSerializerOptions()
         {

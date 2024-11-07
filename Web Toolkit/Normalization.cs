@@ -7,9 +7,9 @@ using System.Text.RegularExpressions;
 
 namespace NeoSmart.Web
 {
-    public static class Normalization
+    public static partial class Normalization
     {
-        //Based off the work of Emmanuel Vaïsse
+        // Based off the work of Emmanuel Vaïsse
         static private readonly Dictionary<int, string> TranslationTable = new Dictionary<int, string>() {
             {306, "IJ"}, {214, "O"}, {338, "O"}, {220, "U"}, {228, "ae"}, {230, "ae"},
             {307, "ij"}, {246, "o"}, {339, "oe"}, {252, "u"}, {223, "ss"}, {383, "ss"},
@@ -108,22 +108,21 @@ namespace NeoSmart.Web
 
         public static string Unaccent(string input, bool trimUnknown = true)
         {
-            //Compose unicode points (i.e. e + ´ -> é)
+            // Compose unicode points (i.e. e + ´ -> é)
             input = input.Normalize(NormalizationForm.FormC);
             var sb = new StringBuilder(input.Length);
 
             foreach (var c in input)
             {
-                //First check if it's a benign character to save time
-                string replacement;
+                // First check if it's a benign character to save time
                 if (c <= 127)
                 {
                     sb.Append(c);
                 }
-                //attempt to find an alternative ASCII representation for this character
-                else if (TranslationTable.TryGetValue(c, out replacement))
+                // Attempt to find an alternative ASCII representation for this character
+                else if (TranslationTable.TryGetValue(c, out var replacement))
                 {
-                    //Replace with the ASCII equivalent (i.e. æ -> ae)
+                    // Replace with the ASCII equivalent (i.e. æ -> ae)
                     sb.Append(replacement);
                 }
                 else if (!trimUnknown)
@@ -140,22 +139,21 @@ namespace NeoSmart.Web
             CultureInfo cultureInfo = Thread.CurrentThread.CurrentCulture;
             TextInfo textInfo = cultureInfo.TextInfo;
 
-            //Check if we have a string to format
-            if (String.IsNullOrEmpty(stringToFormat))
+            // Check if we have a string to format
+            if (string.IsNullOrEmpty(stringToFormat))
             {
-                //Return an empty string
-                return String.Empty;
+                return string.Empty;
             }
 
-            //Check if string already contains both upper and lower, in which case assume it's correct
+            // Check if string already contains both upper and lower, in which case assume it's correct
             bool hasLower = false;
             bool hasUpper = false;
             foreach (char c in stringToFormat)
             {
-                if (!Char.IsLetter(c))
+                if (!char.IsLetter(c))
                     continue;
 
-                if (Char.IsUpper(c))
+                if (char.IsUpper(c))
                     hasUpper = true;
                 else
                     hasLower = true;
@@ -164,8 +162,8 @@ namespace NeoSmart.Web
                     return stringToFormat;
             }
 
-            //From http://msdn.microsoft.com/en-us/library/system.globalization.textinfo.totitlecase.aspx:
-            //"However, this method does not currently provide proper casing to convert a word that is entirely uppercase, such as an acronym."
+            // From http://msdn.microsoft.com/en-us/library/system.globalization.textinfo.totitlecase.aspx:
+            // "However, this method does not currently provide proper casing to convert a word that is entirely uppercase, such as an acronym."
             return textInfo.ToTitleCase(stringToFormat.ToLower().Trim());
         }
 

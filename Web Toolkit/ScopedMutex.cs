@@ -52,7 +52,7 @@ namespace NeoSmart.Web
 
         private static ScopedMutex InnerCreate(string name, out bool owned)
         {
-            CountedMutex mutex;
+            CountedMutex? mutex;
 
             bool newlyCreated = false;
             if (MutexMap.TryGetValue(name, out mutex))
