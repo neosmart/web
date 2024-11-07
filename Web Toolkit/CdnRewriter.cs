@@ -48,8 +48,9 @@ namespace NeoSmart.Web
                 };
         }
 
-        public CdnRewriteFilter(Stream stream)
+        public CdnRewriteFilter(string cdnDomain, Stream stream)
         {
+            CdnDomain = cdnDomain;
             _stream = stream;
         }
 
