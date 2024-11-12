@@ -1,8 +1,8 @@
-using ARSoft.Tools.Net;
-using ARSoft.Tools.Net.Dns;
+using DnsClient;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Threading.Tasks;
 
 namespace NeoSmart.Web
 {
@@ -13,50 +13,42 @@ namespace NeoSmart.Web
             "8.8.8.8",
             "1.1.1.1",
             "75.75.75.75",
-        }.Select(ip => IPAddress.Parse(ip)).ToList();
+        }.Select(IPAddress.Parse).ToList();
 
-        private static DnsClient _dnsClient = new DnsClient(DnsServers, 5000);
-        private static string[] BlankResult = new string[] { };
+        private static LookupClient _dnsClient = new LookupClient(DnsServers.ToArray());
 
-        public static IEnumerable<string> GetMXRecords(string domain, out bool found)
+        public static IEnumerable<string> GetMXRecords(string domain)
         {
-            var result = _dnsClient.Resolve(DomainName.Parse(domain), RecordType.Mx);
-            if (result?.AnswerRecords == null)
-            {
-                found = false;
-                return BlankResult;
-            }
+            var records = _dnsClient.Query(domain, QueryType.MX)
+                .Answers.MxRecords();
 
-            var records = result.AnswerRecords.OfType<MxRecord>();
-            found = records.Any();
-            return records.Select(r => r.ExchangeDomainName.ToString());
+            return records.Select(r => r.Exchange.Value);
         }
 
-        public static bool GetIpAddresses(string domain, out IPAddress[]? addresses)
+        public static async ValueTask<IEnumerable<string>> GetMXRecordsAsync(string domain)
         {
-            if (!DomainName.TryParse(domain, out var parsedDomain))
-            {
-                addresses = null;
-                return false;
-            }
+            var records = (await _dnsClient.QueryAsync(domain, QueryType.MX))
+                .Answers.MxRecords();
 
-            var result = _dnsClient.Resolve(parsedDomain);
-            if (result?.AnswerRecords == null)
-            {
-                addresses = null;
-                return false;
-            }
+            return records.Select(r => r.Exchange.Value);
+        }
+
+        public static IEnumerable<IPAddress> GetIpAddresses(string domain)
+        {
+            var result = _dnsClient.Query(domain, QueryType.A);
 
             //Debug.Assert(task.IsCompleted);
-            var records = result.AnswerRecords.OfType<ARecord>();
-            if (!records.Any())
-            {
-                addresses = null;
-                return false;
-            }
+            var records = result.Answers.ARecords();
+            return records.Select(r => r.Address);
+        }
 
-            addresses = records.Select(r => r.Address).ToArray();
-            return true;
+        public static async ValueTask <IEnumerable<IPAddress>> GetIpAddressesAsync(string domain)
+        {
+            var result = await _dnsClient.QueryAsync(domain, QueryType.A);
+
+            //Debug.Assert(task.IsCompleted);
+            var records = result.Answers.ARecords();
+            return records.Select(r => r.Address);
         }
     }
 }

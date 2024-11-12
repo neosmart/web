@@ -6,7 +6,7 @@
 		<RootNamespace>NeoSmart.Web</RootNamespace>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 		<PackageId>NeoSmart.Web</PackageId>
-		<Version>4.0.0</Version>
+		<Version>4.1.2</Version>
 		<Authors>NeoSmart Technologies, Mahmoud Al-Qudsi, neosmart</Authors>
 		<Company>NeoSmart Technologies</Company>
 		<Description>Extension methods and helper classes specifically for the web. Includes a ScopedMutex, SafeLookup helpers for NameValueCollection, FormCollection, and Dictionary types, and dependency-free implementations of client-side signing for S3 and CloudFront. Email validation, DNS lookup, SEO redirection, URL helpers, DateTime conversion to Unix, referer validation, and more.</Description>
@@ -18,12 +18,12 @@
 		<PackageTags></PackageTags>
 		<PackageReleaseNotes>Initial release on nuget for .NET Standard 2.1/.NET Core 3.1</PackageReleaseNotes>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
-		<LangVersion>11.0</LangVersion>
+		<LangVersion>12.0</LangVersion>
 		<Nullable>enable</Nullable>
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="ARSoft.Tools.Net.Core" Version="2.3.0" />
+		<PackageReference Include="DnsClient" Version="1.8.0" />
 		<PackageReference Include="F23.StringSimilarity" Version="6.0.0" />
 		<PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.2.0" />
 		<PackageReference Include="Microsoft.AspNetCore.Http.Features" Version="6.0.0-preview.4.21253.5" />

@@ -19,7 +19,7 @@ namespace NeoSmart.Web
 {
     static public class Seo
     {
-        public static ILogger Logger { private get; set; } = null!;
+        public static ILogger? Logger { private get; set; } = null!;
 
         public static List<string> PreservedQueryStrings = new()
         {
@@ -375,7 +375,7 @@ namespace NeoSmart.Web
 
             if (destination is not null)
             {
-                Logger.LogDebug("Redirecting {OriginalUri} to {RedirectUri}",
+                Logger?.LogDebug("Redirecting {OriginalUri} to {RedirectUri}",
                     request.GetEncodedPathAndQuery(), destination);
                 return true;
             }

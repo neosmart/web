@@ -79,16 +79,9 @@ namespace NeoSmart.Web
                 {
                     try
                     {
-                        var results = DnsLookup.GetMXRecords(domain, out bool found);
-                        foreach (var result in results)
+                        foreach (var result in DnsLookup.GetMXRecords(domain))
                         {
-                            DnsLookup.GetIpAddresses(result, out var addresses);
-
-                            if (addresses == null)
-                            {
-                                continue;
-                            }
-
+                            var addresses = DnsLookup.GetIpAddresses(result);
                             foreach (var ip in addresses)
                             {
                                 local.Add(ip);
@@ -142,8 +135,8 @@ namespace NeoSmart.Web
                 return true;
             }
 
-            var mxRecords = DnsLookup.GetMXRecords(address.Host, out bool mxFound);
-            if (!mxFound || !mxRecords.Any())
+            var mxRecords = DnsLookup.GetMXRecords(address.Host);
+            if (!mxRecords.Any())
             {
                 // No MX record associated with this address or timeout
                 Logger?.LogInformation("Could not find MX record for domain {MailDomain}", address.Host);
@@ -153,8 +146,8 @@ namespace NeoSmart.Web
             // Compare against our blacklist
             foreach (var record in mxRecords)
             {
-                DnsLookup.GetIpAddresses(record, out var addresses);
-                if (addresses != null && addresses.Any(BlockedMxAddresses.Contains))
+                var addresses = DnsLookup.GetIpAddresses(record);
+                if (addresses.Any(BlockedMxAddresses.Contains))
                 {
                     // This mx record points to the same IP as a blacklisted MX record or timeout
                     Logger?.LogInformation("Email domain {MailDomain} has MX record {MxRecord} in blacklist!",
@@ -429,31 +422,72 @@ namespace NeoSmart.Web
         /// </summary>
         public static readonly SortedList<string> TypoDomains = new()
         {
+            // Variations for yahoo.com
             "ahoo.com",
-            "comast.net",
+            "yahho.com",
+            "yahool.com",
+            "yahooo.com",
+            "yaoo.com",
+
+            // Variations for gmail.com
             "gail.com",
             "gamail.com",
             "gamil.com",
-            "gmail.cn",
-            "gmail.co",
             "gmial.com",
             "gmil.com",
             "gmsil.com",
             "gnail.com",
             "gol.com",
+            "gmail.con",
+            "gmail.co",
+            "gmail.om",
+            "gmal.com",
+            "gml.com",
+
+            // Variations for hotmail.com
             "homail.com",
             "homtail.com",
             "hotmal.com",
             "hotmsil.co",
             "hotmsil.com",
-            "ive.com",
-            "my.com",
             "otmail.com",
+            "hotmil.com",
+
+            // Variations for live.com
+            "ive.com",
+            "lve.com",
+            "liv.com",
+            "live.co",
+
+            // Variations for outlook.com
+            "outlok.com",
+            "outllok.com",
+            "outloo.com",
+            "otlook.com",
+
+            // Variations for comcast.net
+            "comast.net",
+            "comcost.net",
+            "comcat.net",
+            "comcst.net",
+
+            // Variations for verizon.net
             "verizion.net",
             "verrizon.net",
-            "yahho.com",
-            "yahool.com",
-            "yahooo.com",
+            "verison.net",
+            "vrizon.net",
+
+            // Variations for icloud.com
+            "iclod.com",
+            "icluod.com",
+            "iloud.com",
+            "icoud.com",
+
+            // Variations for aol.com
+            "aol.co",
+            "al.com",
+            "aol.om",
+            "aool.com",
         };
 
         // Domains that have hard rules as to the length of the prefix (prefix@domain)
@@ -461,17 +495,19 @@ namespace NeoSmart.Web
         {
             { "gmail.com", 6 },
             { "googlemail.com", 6 },
+            { "yahoo.com", 4 },
         };
 
-        private static readonly SortedList<string> MxBlackList = new(new[]
-        {
+        private static readonly SortedList<string> MxBlackList = new(
+        [
             "mvrht.com", // 10minutemail.com
             "mailinator.com",
             "sharklasers.com", // guerrillamail.com
             "teleworm.us", // fakemailgenerator.com
             "hmamail.com", // hidemyass email
             "generator.email", // primary web address and mx record for many different domains
-        });
+            "tempr.email", // discard.email many different domains
+        ]);
 
         private static readonly SortedList<string> TopDomains = new()
         {

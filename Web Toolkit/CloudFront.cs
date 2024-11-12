@@ -98,6 +98,7 @@ namespace NeoSmart.Web
             }
         }
 
+        // CloudFront does not use the same format as UrlBase64
         private static string ToUrlSafeBase64String(byte[] input)
         {
             return Convert.ToBase64String(input)
