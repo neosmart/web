@@ -11,11 +11,16 @@ namespace NeoSmart.Web
         private static IList<IPAddress> DnsServers = new[] {
             //"192.168.45.1",
             "8.8.8.8",
+            /*"8.8.4.4",
             "1.1.1.1",
-            "75.75.75.75",
+            "1.0.1.0",*/
         }.Select(IPAddress.Parse).ToList();
 
+#if DEBUG
         private static LookupClient _dnsClient = new LookupClient(DnsServers.ToArray());
+#else
+        private static LookupClient _dnsClient = new LookupClient();
+#endif
 
         public static IEnumerable<string> GetMXRecords(string domain)
         {
@@ -42,7 +47,7 @@ namespace NeoSmart.Web
             return records.Select(r => r.Address);
         }
 
-        public static async ValueTask <IEnumerable<IPAddress>> GetIpAddressesAsync(string domain)
+        public static async ValueTask<IEnumerable<IPAddress>> GetIpAddressesAsync(string domain)
         {
             var result = await _dnsClient.QueryAsync(domain, QueryType.A);
 
