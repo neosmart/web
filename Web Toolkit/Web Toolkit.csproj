@@ -6,7 +6,7 @@
 		<RootNamespace>NeoSmart.Web</RootNamespace>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 		<PackageId>NeoSmart.Web</PackageId>
-		<Version>4.1.2</Version>
+		<Version>4.1.3</Version>
 		<Authors>NeoSmart Technologies, Mahmoud Al-Qudsi, neosmart</Authors>
 		<Company>NeoSmart Technologies</Company>
 		<Description>Extension methods and helper classes specifically for the web. Includes a ScopedMutex, SafeLookup helpers for NameValueCollection, FormCollection, and Dictionary types, and dependency-free implementations of client-side signing for S3 and CloudFront. Email validation, DNS lookup, SEO redirection, URL helpers, DateTime conversion to Unix, referer validation, and more.</Description>

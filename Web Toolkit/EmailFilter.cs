@@ -1,8 +1,10 @@
+using DnsClient;
 using F23.StringSimilarity;
 using F23.StringSimilarity.Interfaces;
 using Microsoft.Extensions.Logging;
 using NeoSmart.Collections;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
@@ -10,7 +12,6 @@ using System.Linq;
 using System.Net;
 using System.Net.Mail;
 using System.Text.RegularExpressions;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace NeoSmart.Web
@@ -60,53 +61,43 @@ namespace NeoSmart.Web
         private static partial Regex RepeatedCharsRegex();
 
         private static HashSet<IPAddress> BlockedMxAddresses = new HashSet<IPAddress>();
-        private static ManualResetEventSlim ReverseDnsCompleteEvent = new ManualResetEventSlim(false);
-        private static object ReverseDnsMutexLock = new object();
+        private static TaskCompletionSource ReverseDnsCompleteEvent = new();
         private static bool ReverseDnsComplete = false;
 
         static EmailFilter()
         {
-            ValidMxDomainCache = new(TopDomains);
+            ValidMxDomainCache = new(TopDomains, StringComparer.OrdinalIgnoreCase);
 
-            // This cannot be run in the constructor and needs to run in a separate thread
-            // not our fault, see here: https://blogs.msdn.microsoft.com/pfxteam/2011/05/03/static-constructor-deadlocks/
-            new Thread(() =>
+            Task.Run(static async () =>
             {
                 // Create a set of IP addresses for known bad domains used to reverse filter any future MX lookups for a match.
                 // This will catch aliases for temporary email address services.
-                BlockedMxAddresses = new HashSet<IPAddress>();
-                Parallel.ForEach(MxBlackList, () => new HashSet<IPAddress>(), (domain, state, local) =>
+                var blockedMxAddresses = new ConcurrentBag<IPAddress>();
+                var mxTasks = MxBlackList.Select(async domain =>
                 {
                     try
                     {
-                        foreach (var result in DnsLookup.GetMXRecords(domain))
+                        var mxResults = await DnsLookup.GetMXRecordsAsync(domain);
+                        var addresses = await Task.WhenAll(mxResults.Select(result => DnsLookup.GetIpAddressesAsync(result).AsTask()));
+                        foreach (var ip in addresses.SelectMany(x => x))
                         {
-                            var addresses = DnsLookup.GetIpAddresses(result);
-                            foreach (var ip in addresses)
-                            {
-                                local.Add(ip);
-                            }
+                            blockedMxAddresses.Add(ip);
                         }
                     }
                     catch (Exception ex)
                     {
                         Logger?.LogWarning(ex, "Error retrieving MX info for domain {MxBlackListDomain}", domain);
                     }
-                    return local;
-                }, (local) =>
-                {
-                    lock (BlockedMxAddresses)
-                    {
-                        foreach (var ip in local)
-                        {
-                            BlockedMxAddresses.Add(ip);
-                        }
-                    }
                 });
 
-                ReverseDnsCompleteEvent.Set();
+                await Task.WhenAll(mxTasks);
+                foreach (var address in blockedMxAddresses)
+                {
+                    BlockedMxAddresses.Add(address);
+                }
                 ReverseDnsComplete = true;
-            }).Start();
+                ReverseDnsCompleteEvent.SetResult();
+            });
         }
 
         // aka IsDefinitelyFakeEmail
@@ -117,48 +108,101 @@ namespace NeoSmart.Web
 
         public static bool HasValidMx(MailAddress address)
         {
-            if (!ReverseDnsComplete)
+            try
             {
-                lock (ReverseDnsMutexLock)
+                if (!ReverseDnsComplete)
                 {
-                    if (ReverseDnsCompleteEvent is not null)
+                    using var task = ReverseDnsCompleteEvent.Task;
+                    ReverseDnsCompleteEvent.Task.Wait();
+                }
+
+                if (ValidMxDomainCache.Contains(address.Host))
+                {
+                    return true;
+                }
+
+                var mxRecords = DnsLookup.GetMXRecords(address.Host);
+                if (!mxRecords.Any())
+                {
+                    // No MX record associated with this address or timeout
+                    Logger?.LogInformation("Could not find MX record for domain {MailDomain}", address.Host);
+                    return false;
+                }
+
+                // Compare against our blacklist
+                foreach (var record in mxRecords)
+                {
+                    var addresses = DnsLookup.GetIpAddresses(record);
+                    if (addresses.Any(BlockedMxAddresses.Contains))
                     {
-                        ReverseDnsCompleteEvent.Wait();
-                        ReverseDnsCompleteEvent.Dispose();
-                        ReverseDnsCompleteEvent = null!;
+                        // This mx record points to the same IP as a blacklisted MX record or timeout
+                        Logger?.LogInformation("Email domain {MailDomain} has MX record {MxRecord} in blacklist!",
+                            address.Host, record);
+                        return false;
                     }
                 }
-            }
 
-            if (ValidMxDomainCache.Contains(address.Host))
+                lock (ValidMxDomainCache)
+                {
+                    ValidMxDomainCache.Add(address.Host);
+                }
+            }
+            catch (DnsResponseException ex)
             {
+                Logger?.LogWarning(ex, "Error looking up MX records for {MxDomain}", address.Host);
+                // Err on the side of caution
                 return true;
             }
 
-            var mxRecords = DnsLookup.GetMXRecords(address.Host);
-            if (!mxRecords.Any())
-            {
-                // No MX record associated with this address or timeout
-                Logger?.LogInformation("Could not find MX record for domain {MailDomain}", address.Host);
-                return false;
-            }
+            return true;
+        }
 
-            // Compare against our blacklist
-            foreach (var record in mxRecords)
+        public static async ValueTask<bool> HasValidMxAsync(MailAddress address)
+        {
+            try
             {
-                var addresses = DnsLookup.GetIpAddresses(record);
-                if (addresses.Any(BlockedMxAddresses.Contains))
+                if (!ReverseDnsComplete)
                 {
-                    // This mx record points to the same IP as a blacklisted MX record or timeout
-                    Logger?.LogInformation("Email domain {MailDomain} has MX record {MxRecord} in blacklist!",
-                        address.Host, record);
+                    using var task = ReverseDnsCompleteEvent.Task;
+                    await task;
+                }
+
+                if (ValidMxDomainCache.Contains(address.Host))
+                {
+                    return true;
+                }
+
+                var mxRecords = await DnsLookup.GetMXRecordsAsync(address.Host);
+                if (!mxRecords.Any())
+                {
+                    // No MX record associated with this address or timeout
+                    Logger?.LogInformation("Could not find MX record for domain {MailDomain}", address.Host);
                     return false;
                 }
-            }
 
-            lock (ValidMxDomainCache)
+                // Compare against our blacklist
+                foreach (var record in mxRecords)
+                {
+                    var addresses = await DnsLookup.GetIpAddressesAsync(record);
+                    if (addresses.Any(BlockedMxAddresses.Contains))
+                    {
+                        // This mx record points to the same IP as a blacklisted MX record or timeout
+                        Logger?.LogInformation("Email domain {MailDomain} has MX record {MxRecord} in blacklist!",
+                            address.Host, record);
+                        return false;
+                    }
+                }
+
+                lock (ValidMxDomainCache)
+                {
+                    ValidMxDomainCache.Add(address.Host);
+                }
+            }
+            catch (DnsResponseException ex)
             {
-                ValidMxDomainCache.Add(address.Host);
+                Logger?.LogWarning(ex, "Error looking up MX records for {MxDomain}", address.Host);
+                // Err on the side of caution
+                return true;
             }
 
             return true;
@@ -166,22 +210,27 @@ namespace NeoSmart.Web
 
         static public bool HasValidMx(string email)
         {
-            try
+            if (!MailAddress.TryCreate(email, out var address))
             {
-                return HasValidMx(new MailAddress(email));
+                return false;
             }
-            catch (Exception ex)
-            {
-                Logger?.LogError(ex, "Error checking domain MX records");
-                // Err on the side of caution
-                return true;
-            }
+            return HasValidMx(address);
         }
 
-        public static bool IsProbablyFakeEmail(string? email, int meanness, bool validateMx = false)
+        static public async ValueTask<bool> HasValidMxAsync(string email)
+        {
+            if (!MailAddress.TryCreate(email, out var address))
+            {
+                return false;
+            }
+            return await HasValidMxAsync(address);
+        }
+
+        private static bool IsProbablyFakeEmailInner(string? email, int meanness, [NotNullWhen(false)] out MailAddress? mailAddress)
         {
             if (string.IsNullOrWhiteSpace(email))
             {
+                mailAddress = null;
                 return true;
             }
 
@@ -189,10 +238,11 @@ namespace NeoSmart.Web
             email = email.ToLower();
             if (!IsValidFormat(email))
             {
+                mailAddress = null;
                 return true;
             }
 
-            var mailAddress = new MailAddress(email);
+            mailAddress = new MailAddress(email);
 
             if (meanness >= 0)
             {
@@ -293,8 +343,34 @@ namespace NeoSmart.Web
                 }
             }
 
+            return false;
+        }
+
+        public static bool IsProbablyFakeEmail(string? email, int meanness, bool validateMx = false)
+        {
+            if (IsProbablyFakeEmailInner(email, meanness, out var mailAddress))
+            {
+                return true;
+            }
+
             // Do this last because it's the most expensive
             if (validateMx && !HasValidMx(mailAddress))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        public static async ValueTask<bool> IsProbablyFakeEmailAsync(string? email, int meanness, bool validateMx = false)
+        {
+            if (IsProbablyFakeEmailInner(email, meanness, out var mailAddress))
+            {
+                return true;
+            }
+
+            // Do this last because it's the most expensive
+            if (validateMx && !await HasValidMxAsync(mailAddress))
             {
                 return true;
             }
