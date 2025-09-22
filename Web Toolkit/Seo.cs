@@ -25,6 +25,8 @@ namespace NeoSmart.Web
         // TODO: Benchmark to see if we should change to a FrozenSet<String> here as others
         // indicate that specifically when used with string keys, it outperforms a regular
         // set considerably.
+        // https://archive.is/cvAjt
+        // https://docs.google.com/spreadsheets/d/e/2PACX-1vQnFySs1L20559Ce1SUR_ixYfhTuRoG0NpChUOjE5WyFP7_alzTQeCkCaTd8xvoF3wF5cp_ePhNJk56/pubhtml?gid=1360016754#gid=912336890
         // Another consideration is to no longer merge the default PreservedQueryStrings with
         // each method's preserved parameters and check both separately. This would reduce
         // construction costs (and memory, some) but at the cost of increasing lookups.
