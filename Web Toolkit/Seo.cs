@@ -22,11 +22,17 @@ namespace NeoSmart.Web
     {
         public static ILogger? Logger { private get; set; } = null!;
 
+        // TODO: Benchmark to see if we should change to a FrozenSet<String> here as others
+        // indicate that specifically when used with string keys, it outperforms a regular
+        // set considerably.
+        // Another consideration is to no longer merge the default PreservedQueryStrings with
+        // each method's preserved parameters and check both separately. This would reduce
+        // construction costs (and memory, some) but at the cost of increasing lookups.
         public static List<string> PreservedQueryStrings =
         [
             "gad",
-            "gad_source",
             "gad_campaignid",
+            "gad_source",
             "gbraid",
             "gclid",
             "utm_campaign",
@@ -44,7 +50,7 @@ namespace NeoSmart.Web
             KeepAll
         }
 
-        private static readonly ConcurrentDictionary<ulong, CachedMethod> MethodCache = new ConcurrentDictionary<ulong, CachedMethod>();
+        private static readonly ConcurrentDictionary<ulong, CachedMethod> MethodCache = new();
 
         public static void RobotsTag(this Controller controller, string value, string? botName = null)
         {
@@ -110,11 +116,10 @@ namespace NeoSmart.Web
         /// <param name="lineNumber"></param>
         public static void SeoRedirect(this Controller controller, HttpRequest request, string[]? extraQueryStrings = null, [CallerFilePath] string filePath = "", [CallerLineNumber] int lineNumber = 0)
         {
-            var key = NeoSmart.Hashing.XXHash.XXHash64.Hash((ulong)lineNumber, MemoryMarshal.AsBytes(filePath.AsSpan()));
+            var key = Hashing.XXHash.XXHash64.Hash((ulong)lineNumber, MemoryMarshal.AsBytes(filePath.AsSpan()));
             if (MethodCache.TryGetValue(key, out var cachedMethod))
             {
-                string? destination;
-                if (DetermineSeoRedirect(controller, request, cachedMethod, QueryStringBehavior.KeepActionParameters, out destination))
+                if (DetermineSeoRedirect(controller, request, cachedMethod, QueryStringBehavior.KeepActionParameters, out string? destination))
                 {
                     controller.Response.Redirect(destination, true);
                 }
