@@ -110,6 +110,17 @@ namespace NeoSmart.Web
         /// <param name="lineNumber"></param>
         public static void SeoRedirect(this Controller controller, HttpRequest request, string[]? extraQueryStrings = null, [CallerFilePath] string filePath = "", [CallerLineNumber] int lineNumber = 0)
         {
+            var key = NeoSmart.Hashing.XXHash.XXHash64.Hash((ulong)lineNumber, MemoryMarshal.AsBytes(filePath.AsSpan()));
+            if (MethodCache.TryGetValue(key, out var cachedMethod))
+            {
+                string? destination;
+                if (DetermineSeoRedirect(controller, request, cachedMethod, QueryStringBehavior.KeepActionParameters, out destination))
+                {
+                    controller.Response.Redirect(destination, true);
+                }
+                return;
+            }
+
             List<string>? preservedQueryStrings;
             if (extraQueryStrings is null)
             {
@@ -120,17 +131,6 @@ namespace NeoSmart.Web
             {
                 preservedQueryStrings = [.. PreservedQueryStrings, .. extraQueryStrings];
                 preservedQueryStrings.Sort(StringComparer.Ordinal);
-            }
-
-            var key = NeoSmart.Hashing.XXHash.XXHash64.Hash((ulong)lineNumber, MemoryMarshal.AsBytes(filePath.AsSpan()));
-            if (MethodCache.TryGetValue(key, out var cachedMethod))
-            {
-                string? destination;
-                if (DetermineSeoRedirect(controller, request, cachedMethod, QueryStringBehavior.KeepActionParameters, out destination))
-                {
-                    controller.Response.Redirect(destination, true);
-                }
-                return;
             }
 
             // There has to be a caller because this isn't Main()
