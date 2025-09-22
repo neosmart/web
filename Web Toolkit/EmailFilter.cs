@@ -78,10 +78,13 @@ namespace NeoSmart.Web
                     try
                     {
                         var mxResults = await DnsLookup.GetMXRecordsAsync(domain);
-                        var addresses = await Task.WhenAll(mxResults.Select(result => DnsLookup.GetIpAddressesAsync(result).AsTask()));
-                        foreach (var ip in addresses.SelectMany(x => x))
+                        var addresses = Task.WhenEach(mxResults.Select(result => DnsLookup.GetIpAddressesAsync(result).AsTask()));
+                        await foreach (var block in addresses)
                         {
-                            blockedMxAddresses.Add(ip);
+                            foreach (var ip in await block)
+                            {
+                                blockedMxAddresses.Add(ip);
+                            }
                         }
                     }
                     catch (Exception ex)
