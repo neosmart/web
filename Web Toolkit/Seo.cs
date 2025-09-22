@@ -272,12 +272,11 @@ namespace NeoSmart.Web
             return string.Empty;
         }
 
-        static ReadOnlyMemory<char> SplitChars = new[] { '/' }.AsMemory();
         private static void ExtractControllerAndAction(ReadOnlySpan<char> path, out ReadOnlySpan<char> controller, out ReadOnlySpan<char> action)
         {
             // We provide three spans so that we can get the first two delimited by / and then everything else (which we don't care about)
             Span<Range> ranges = stackalloc Range[3];
-            var count = path.Split(ranges, SplitChars.Span, StringSplitOptions.RemoveEmptyEntries);
+            var count = path.Split(ranges, '/', StringSplitOptions.RemoveEmptyEntries);
             if (count == 0)
             {
                 controller = "";
