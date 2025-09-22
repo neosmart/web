@@ -21,10 +21,12 @@ namespace NeoSmart.Web
     {
         public static ILogger? Logger { private get; set; } = null!;
 
-        public static List<string> PreservedQueryStrings = new()
-        {
+        public static List<string> PreservedQueryStrings =
+        [
             "gad",
             "gad_source",
+            "gad_campaignid",
+            "gbraid",
             "gclid",
             "utm_campaign",
             "utm_content",
@@ -32,7 +34,7 @@ namespace NeoSmart.Web
             "utm_nooverride",
             "utm_source",
             "utm_term",
-        };
+        ];
 
         public enum QueryStringBehavior
         {
