@@ -117,8 +117,7 @@ namespace NeoSmart.Web
             }
             else
             {
-                preservedQueryStrings = new(PreservedQueryStrings);
-                preservedQueryStrings.AddRange(extraQueryStrings);
+                preservedQueryStrings = [.. PreservedQueryStrings, .. extraQueryStrings];
                 preservedQueryStrings.Sort(StringComparer.Ordinal);
             }
 
@@ -266,24 +265,32 @@ namespace NeoSmart.Web
             return string.Empty;
         }
 
-        static char[] SplitChars = new[] { '/' };
-        private static (string controller, string action) ExtractControllerAndAction(string path)
+        static ReadOnlyMemory<char> SplitChars = new[] { '/' }.AsMemory();
+        private static void ExtractControllerAndAction(ReadOnlySpan<char> path, out ReadOnlySpan<char> controller, out ReadOnlySpan<char> action)
         {
-            var parts = path.Split(SplitChars, StringSplitOptions.RemoveEmptyEntries);
-            if (parts.Length == 0)
+            // We provide three spans so that we can get the first two delimited by / and then everything else (which we don't care about)
+            Span<Range> ranges = [new(), new(), new()];
+            var count = path.Split(ranges, SplitChars.Span, StringSplitOptions.RemoveEmptyEntries);
+            if (count == 0)
             {
-                return ("", "Index");
+                controller = "";
+                action = "Index";
             }
-            else if (parts.Length == 1)
+            else if (count == 1)
             {
-                return (parts[0], "Index");
+                controller = path[ranges[0]];
+                action = "Index";
             }
-            return (parts[0], parts[1]);
+            else
+            {
+                controller = path[ranges[0]];
+                action = path[ranges[1]];
+            }
         }
 
         private static bool DetermineSeoRedirect(Controller controller, HttpRequest request, CachedMethod method, QueryStringBehavior stripQueryStrings, [NotNullWhen(true)] out string? destination)
         {
-            var (currentController, currentAction) = ExtractControllerAndAction(request.Path);
+            ExtractControllerAndAction(request.Path.Value, out var currentController, out var currentAction);
 
             // Tentatively....
             // Note: not using a string builder because the assumption is that most requests are correct
@@ -297,14 +304,14 @@ namespace NeoSmart.Web
             if (!currentAction.Equals(method.Action, StringComparison.Ordinal))
             {
                 destination ??= InitDestination(request);
-                destination = destination.Replace(currentAction, method.Action, StringComparison.Ordinal);
+                destination = destination.Replace(currentAction.ToString(), method.Action, StringComparison.Ordinal);
             }
 
             // Case-based redirect
-            if (!string.IsNullOrEmpty(currentController) && !currentController.Equals(method.Controller, StringComparison.Ordinal))
+            if (!currentController.IsEmpty && !currentController.Equals(method.Controller, StringComparison.Ordinal))
             {
                 destination ??= InitDestination(request);
-                destination = destination.Replace(currentController, method.Controller, StringComparison.Ordinal);
+                destination = destination.Replace(currentController.ToString(), method.Controller, StringComparison.Ordinal);
             }
 
             // Trailing-backslash configuration (this is the simplification of the NOT XNOR)
@@ -321,13 +328,13 @@ namespace NeoSmart.Web
                 if ((destination ?? request.Path).EndsWith("/Index/", StringComparison.Ordinal))
                 {
                     destination ??= InitDestination(request);
-                    destination = destination.Remove(destination.Length - "Index/".Length);
+                    destination = destination[..^"Index/".Length];
 
                 }
                 else if ((destination ?? request.Path).EndsWith("/Index", StringComparison.Ordinal))
                 {
                     destination ??= InitDestination(request);
-                    destination = destination.Remove(destination.Length - "Index".Length);
+                    destination = destination[..^"Index".Length];
                 }
             }
 
