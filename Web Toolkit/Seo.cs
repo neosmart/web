@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -154,7 +155,7 @@ namespace NeoSmart.Web
             SeoRedirect(controller, request, stripQueryStrings, null, callingMethod, key);
         }
 
-        class CachedMethod
+        sealed class CachedMethod
         {
             public string Controller { get; }
             public string Action { get; }
@@ -168,14 +169,13 @@ namespace NeoSmart.Web
             }
         }
 
-        private static HashSet<Type> IgnoredParameterAttrs = new()
-        {
+        private static FrozenSet<Type> IgnoredParameterAttrs = [
             typeof(FromBodyAttribute),
             typeof(FromFormAttribute),
             typeof(FromHeaderAttribute),
             typeof(FromRouteAttribute),
             typeof(FromServicesAttribute),
-        };
+        ];
 
         private static Regex ActionRegex = new Regex(@"\<(.*)\>");
         private static Regex ControllerRegex = new Regex(@"([^.]+)Controller");
